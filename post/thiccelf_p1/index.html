@@ -75,7 +75,7 @@ There are a number of ways of doing this, including breaking your payload up int
   <title>clock</title>
   <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
 </svg>
-          1 min read
+          2 min read
         </div>
       </div>
     </header>
@@ -83,6 +83,10 @@ There are a number of ways of doing this, including breaking your payload up int
       <p>One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will eventually be detected. At this point, the goal becomes making the analyst/reversers life as difficult as possible.</p>
 <p>There are a number of ways of doing this, including breaking your payload up into smaller chunks to limit exposure and <a href="https://x-c3ll.github.io/posts/fileless-memfd_create/">loading functionality at runtime</a>. However, this post will focus on a different method. &ldquo;Hardening&rdquo; binary payloads.</p>
 <p>There of a number of ways to harden a payload. For example, flexibility in binary formats allows for alterations that can confuse reversing tools. Another possible hardening procedure is <strong>encryption</strong>.</p>
+<p>Encrypting our binary will make it far more difficult for an analyst to examine it, as they will no longer be able to use their tools to dissaseemble it. However, this may also increase the chances of the payload being detected due to <a href="https://www.cyberbit.com/blog/endpoint-security/malware-terms-code-entropy/">entropy</a>.</p>
+<p>An astute reader may immediately ask the question, &ldquo;But if the binary is encrypted, how can it execute?&rdquo;. The short answer is: <em>it can&rsquo;t</em>. However, we can fix this by having the binary decrypt itself. This series of posts, and the tool developed as a result, will focus on automating the ability to do just that.</p>
+<hr>
+<p>A possible way to do this would be to encrypt all functionality besides the entrypoint, then have the process decrypt it&rsquo;s other functions at the beginning of execution.</p>
 
     </div>
     <div class="post-footer">
