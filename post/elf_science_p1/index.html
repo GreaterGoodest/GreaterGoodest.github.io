@@ -75,7 +75,7 @@ There are a number of ways of doing this, including breaking your payload up int
   <title>clock</title>
   <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
 </svg>
-          4 min read
+          5 min read
         </div>
       </div>
     </header>
@@ -83,8 +83,8 @@ There are a number of ways of doing this, including breaking your payload up int
       <p>One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will eventually be detected. At this point, the goal becomes making the analyst/reversers life as difficult as possible.</p>
 <p>There are a number of ways of doing this, including breaking your payload up into smaller chunks to limit exposure and <a href="https://x-c3ll.github.io/posts/fileless-memfd_create/">loading functionality at runtime</a>. However, this post will focus on a different method. &ldquo;Hardening&rdquo; binary payloads.</p>
 <p>Binary hardening can involve a variety of techniques. For example, flexibility in binary formats allows for alterations that can confuse reversing tools. Another possible hardening procedure is <strong>encryption</strong>.</p>
-<p>Encrypting our binary will make it far more difficult for an analyst to examine it, as they will no longer be able to use their tools to dissaseemble it. However, this may also increase the chances of the payload being detected due to <a href="https://www.cyberbit.com/blog/endpoint-security/malware-terms-code-entropy/">entropy</a>.</p>
-<p>An astute reader may immediately ask the question, &ldquo;But if the binary is encrypted, how can it execute?&rdquo;. The short answer is: <em>it can&rsquo;t</em>. However, we can fix this by having the binary decrypt itself. This series of posts, and the tool developed as a result, will focus on automating the ability to do just that.</p>
+<p>Encrypting our binary will make it far more difficult for an analyst to examine it, as they will no longer be able to use their tools to dissasemble it. However, this may also increase the chances of the payload being detected due to <a href="https://www.cyberbit.com/blog/endpoint-security/malware-terms-code-entropy/">entropy</a>.</p>
+<p>An astute reader may immediately ask the question, &ldquo;But if the binary is encrypted, how can it execute?&rdquo;. The short answer is: <em>it can&rsquo;t</em>. However, we can fix this by having the binary decrypt itself. This series of posts will focus on automating the ability to do just that, as well as potentially adding additional hardening techniques.</p>
 <hr>
 <p>A possible way to do this would be to encrypt all functionality besides the entrypoint, then have the process decrypt it&rsquo;s other functions at the beginning of execution. Below is an example of how we could accomplish the encryption portion of this using Python:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e">#!/usr/bin/env python3</span>
@@ -148,7 +148,43 @@ There are a number of ways of doing this, including breaking your payload up int
 <li><strong>-no-pie</strong> to disable position independence</li>
 </ul>
 <p>Disabling position independence will greatly simplify the following steps (Handling <a href="https://access.redhat.com/blogs/766093/posts/1975793">PIE</a> may be the subject of a later post).</p>
-<p>TODO: Talk about read write execute segment being flaggable, so use mprotect instead.</p>
+<hr>
+<p>Let&rsquo;s take a look at the dissasembly of the encrypt_me() function</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ objdump -M intel -D main | grep <span style="color:#e6db74">&#34;&lt;encrypt_me&gt;:&#34;</span> -A <span style="color:#ae81ff">7</span>
+<span style="color:#ae81ff">0000000000401142</span> &lt;encrypt_me&gt;:
+  401142:       <span style="color:#ae81ff">55</span>                      push   rbp
+  401143:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp
+  401146:       <span style="color:#ae81ff">48</span> 8d 3d b7 0e <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xeb7<span style="color:#f92672">]</span>        <span style="color:#75715e"># 402004 &lt;_IO_stdin_used+0x4&gt;</span>
+  40114d:       e8 ee fe ff ff          call   <span style="color:#ae81ff">401040</span> &lt;puts@plt&gt;
+  401152:       <span style="color:#ae81ff">90</span>                      nop
+  401153:       5d                      pop    rbp
+  401154:       c3                      ret
+</code></pre></div><p>The function begins at addres 0x401142 in virtual memory. However, we want to encrypt the function while it resides on disk. This means that we&rsquo;ll need to determine the functions address within the binary.</p>
+<p>We can accomplish this using the readelf utility:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ readelf -SW ./main | grep .text
+  <span style="color:#f92672">[</span>13<span style="color:#f92672">]</span> .text             PROGBITS        <span style="color:#ae81ff">0000000000401060</span> <span style="color:#ae81ff">001060</span> 0001c1 <span style="color:#ae81ff">00</span>  AX  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">16</span>
+</code></pre></div><p>We invoke readelf with the following flags:</p>
+<ul>
+<li>-S to read the Sections of the binary</li>
+<li>-W to output in wide format for readability</li>
+</ul>
+<p>The .text section of a binary typically contains the executable code. We can see that the .text segment is mapped to address 0x401060 in virtual memory, which is associated with address 0x1060 in on the physical file. By association, we know that our function of interest resides from address 0x1142 to 0x1154 (basically just strip off the leading 40).</p>
+<p>Let&rsquo;s verify this using hexedit. If you refer to the previous objdump output, you&rsquo;ll see our function beings with the following bytes: 55 48 89 e5.</p>
+<p><img src="/images/hexedit.gif" alt="hexedit GIF"></p>
+<p>TODO:</p>
+<ul>
+<li>Show how to find address on disk</li>
+<li>Encrypt</li>
+<li>Show in objdump</li>
+<li>Encrypt encrypt_me()</li>
+<li>Show segfault</li>
+<li>Dive in with gdb</li>
+<li>Add decryption logic</li>
+<li>Show segfault due to protections</li>
+<li>Show protections in readelf</li>
+<li>Talk about read write execute segment being flaggable, so use mprotect instead.</li>
+<li>Demonstrate decryption working</li>
+</ul>
 
     </div>
     <div class="post-footer">
