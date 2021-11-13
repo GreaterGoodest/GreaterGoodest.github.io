@@ -6,13 +6,13 @@
     <description>Recent content in Posts on Goodest Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 11 Nov 2021 13:00:44 -0600</lastBuildDate><atom:link href="https://GreaterGoodest.github.io/post/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Fri, 12 Nov 2021 13:00:44 -0600</lastBuildDate><atom:link href="https://GreaterGoodest.github.io/post/index.xml" rel="self" type="application/rss+xml" />
     <item>
-      <title>THICCelf Part 1: Background</title>
-      <link>https://GreaterGoodest.github.io/post/thiccelf_p1/</link>
-      <pubDate>Thu, 11 Nov 2021 13:00:44 -0600</pubDate>
+      <title>ELF Science Part 1</title>
+      <link>https://GreaterGoodest.github.io/post/elf_science_p1/</link>
+      <pubDate>Fri, 12 Nov 2021 13:00:44 -0600</pubDate>
       
-      <guid>https://GreaterGoodest.github.io/post/thiccelf_p1/</guid>
+      <guid>https://GreaterGoodest.github.io/post/elf_science_p1/</guid>
       <description>One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will eventually be detected. At this point, the goal becomes making the analyst/reversers life as difficult as possible.
 There are a number of ways of doing this, including breaking your payload up into smaller chunks to limit exposure and loading functionality at runtime. However, this post will focus on a different method.</description>
     </item>
