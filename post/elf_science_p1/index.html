@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en-us">
   <head>
-    <title>THICCelf Part 1: Background // Goodest Blog</title>
+    <title>ELF Science Part 1 // Goodest Blog</title>
     <link rel="shortcut icon" href="/favicon.ico" />
     <meta charset="utf-8" />
     <meta name="generator" content="Hugo 0.89.2" />
@@ -12,17 +12,17 @@
 
     
     <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="THICCelf Part 1: Background"/>
+<meta name="twitter:title" content="ELF Science Part 1"/>
 <meta name="twitter:description" content="One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will eventually be detected. At this point, the goal becomes making the analyst/reversers life as difficult as possible.
 There are a number of ways of doing this, including breaking your payload up into smaller chunks to limit exposure and loading functionality at runtime. However, this post will focus on a different method."/>
 
-    <meta property="og:title" content="THICCelf Part 1: Background" />
+    <meta property="og:title" content="ELF Science Part 1" />
 <meta property="og:description" content="One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will eventually be detected. At this point, the goal becomes making the analyst/reversers life as difficult as possible.
 There are a number of ways of doing this, including breaking your payload up into smaller chunks to limit exposure and loading functionality at runtime. However, this post will focus on a different method." />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://GreaterGoodest.github.io/post/thiccelf_p1/" /><meta property="article:section" content="post" />
-<meta property="article:published_time" content="2021-11-11T13:00:44-06:00" />
-<meta property="article:modified_time" content="2021-11-11T13:00:44-06:00" />
+<meta property="og:url" content="https://GreaterGoodest.github.io/post/elf_science_p1/" /><meta property="article:section" content="post" />
+<meta property="article:published_time" content="2021-11-12T13:00:44-06:00" />
+<meta property="article:modified_time" content="2021-11-12T13:00:44-06:00" />
 
 
 
@@ -61,21 +61,21 @@ There are a number of ways of doing this, including breaking your payload up int
       
   <article class="post">
     <header class="post-header">
-      <h1 class ="post-title">THICCelf Part 1: Background</h1>
+      <h1 class ="post-title">ELF Science Part 1</h1>
       <div class="post-meta">
         <div>
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-calendar">
   <title>calendar</title>
   <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
 </svg>
-          Nov 11, 2021
+          Nov 12, 2021
         </div>
         <div>
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-clock">
   <title>clock</title>
   <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
 </svg>
-          2 min read
+          4 min read
         </div>
       </div>
     </header>
@@ -86,7 +86,7 @@ There are a number of ways of doing this, including breaking your payload up int
 <p>Encrypting our binary will make it far more difficult for an analyst to examine it, as they will no longer be able to use their tools to dissaseemble it. However, this may also increase the chances of the payload being detected due to <a href="https://www.cyberbit.com/blog/endpoint-security/malware-terms-code-entropy/">entropy</a>.</p>
 <p>An astute reader may immediately ask the question, &ldquo;But if the binary is encrypted, how can it execute?&rdquo;. The short answer is: <em>it can&rsquo;t</em>. However, we can fix this by having the binary decrypt itself. This series of posts, and the tool developed as a result, will focus on automating the ability to do just that.</p>
 <hr>
-<p>A possible way to do this would be to encrypt all functionality besides the entrypoint, then have the process decrypt it&rsquo;s other functions at the beginning of execution. Below is an example of how we could accomplish this using Python:</p>
+<p>A possible way to do this would be to encrypt all functionality besides the entrypoint, then have the process decrypt it&rsquo;s other functions at the beginning of execution. Below is an example of how we could accomplish the encryption portion of this using Python:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e">#!/usr/bin/env python3</span>
 <span style="color:#f92672">import</span> sys
 
@@ -122,7 +122,33 @@ There are a number of ways of doing this, including breaking your payload up int
         stop <span style="color:#f92672">=</span> int(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">3</span>], <span style="color:#ae81ff">16</span>)
 
     crypt(binary, start, stop)
-</code></pre></div><p>Talk about read write execute segment being flaggable, so use mprotect instead.</p>
+</code></pre></div><p>The encryption script begins by retrieving the relevant values from the command line invocation. This includes the name of the binary to encrypt, the start address of encryption, and the end address of encryption. If any of these values are missing, we will print usage instructions and exit with a non-zero exit code to signify an error occurred. The start address and stop address will then be converted to integers. They can be provided in either base 10 or base 16 format, thanks to the added exception handling.</p>
+<p>Now that we have our values, we can pass them to the encryption function (crypt). The encryption function calculates the length of data to encrypt. It then opens the binary to modify it appropriately. Once the binary is open, the file pointer is moved to the start address via seek() and then the data to encrypt is read in. We convert this data to a bytearray object, as bytes are immutable in python. Now that we have a byte array, we can modify it via our &ldquo;encryption&rdquo; method (single byte xor). We&rsquo;ll use a fixed key of 0xFA in this example.</p>
+<p>Once encryption is complete, the modified data can be converted back into bytes and written back to the binary.</p>
+<hr>
+<p>Next we&rsquo;ll need a basic binary to demonstrate our encryption on:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdio.h&gt;</span><span style="color:#75715e">
+</span><span style="color:#75715e"></span>
+<span style="color:#66d9ef">void</span> <span style="color:#a6e22e">encrypt_me</span>(){
+    puts(<span style="color:#e6db74">&#34;Sneaky function!&#34;</span>);
+}
+
+<span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>()
+{
+    puts(<span style="color:#e6db74">&#34;Main function&#34;</span>);
+    encrypt_me();
+}
+</code></pre></div><p>Compilation and execution can be seen below:</p>
+<p><img src="/images/basic-bin.gif" alt="Compilation GIF"></p>
+<p>Our compilation command:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">gcc -g -no-pie -o main main.c
+</code></pre></div><p>Uses the following flags</p>
+<ul>
+<li><strong>-g</strong> to enable symbols</li>
+<li><strong>-no-pie</strong> to disable position independence</li>
+</ul>
+<p>Disabling position independence will greatly simplify the following steps (Handling <a href="https://access.redhat.com/blogs/766093/posts/1975793">PIE</a> may be the subject of a later post).</p>
+<p>TODO: Talk about read write execute segment being flaggable, so use mprotect instead.</p>
 
     </div>
     <div class="post-footer">
