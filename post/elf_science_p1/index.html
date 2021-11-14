@@ -75,7 +75,7 @@ There are a number of ways of doing this, including breaking your payload up int
   <title>clock</title>
   <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
 </svg>
-          5 min read
+          10 min read
         </div>
       </div>
     </header>
@@ -187,12 +187,129 @@ Encrypting main from address <span style="color:#ae81ff">4418</span> to address 
 </code></pre></div><p>As expected, it is now unintelligible. If we attempt to execute the binary, it will segfault once it reaches the encrypted function.</p>
 <p><img src="/images/segfault1.gif" alt="segfault GIF"></p>
 <hr>
+<p>Now we&rsquo;ll add our decryption logic:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdio.h&gt;</span><span style="color:#75715e">
+</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdint.h&gt;</span><span style="color:#75715e">
+</span><span style="color:#75715e"></span>
+<span style="color:#66d9ef">typedef</span> <span style="color:#66d9ef">int64_t</span> address_t;
+
+<span style="color:#66d9ef">void</span> <span style="color:#a6e22e">encrypt_me</span>(){
+    puts(<span style="color:#e6db74">&#34;Sneaky function!&#34;</span>);
+}
+
+<span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>()
+{
+    <span style="color:#66d9ef">int</span> retval <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+
+    puts(<span style="color:#e6db74">&#34;Main function&#34;</span>);
+
+    <span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>addr <span style="color:#f92672">=</span> encrypt_me; 
+    address_t function_size <span style="color:#f92672">=</span> (address_t)main <span style="color:#f92672">-</span> (address_t)encrypt_me <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>; <span style="color:#75715e">// Calculates distance between encrypt_me() and main()
+</span><span style="color:#75715e"></span>    
+    <span style="color:#75715e">/* Decryption loop */</span>
+    <span style="color:#66d9ef">while</span> (function_size <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>)
+    {
+        <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">=</span> <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">^</span> <span style="color:#ae81ff">0xFA</span>;
+        addr <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>;
+        function_size <span style="color:#f92672">-=</span> <span style="color:#ae81ff">1</span>;
+    }
+    <span style="color:#75715e">/* End Decryption loop */</span>
+    
+    encrypt_me();
+}
+</code></pre></div><p>There&rsquo;s a lot going on here so let&rsquo;s break it down.</p>
+<p>First of all we&rsquo;ll create a new type to represent addresses: <strong>address_t</strong>. This will be a 64 bit integer since we&rsquo;re dealing with x86-64 architecture.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#66d9ef">typedef</span> <span style="color:#66d9ef">int64_t</span> address_t;
+</code></pre></div><p>The next new addition is grabbing the address of the encrypt_me() function, and then calculating it&rsquo;s size.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>addr <span style="color:#f92672">=</span> encrypt_me; 
+address_t function_size <span style="color:#f92672">=</span> (address_t)main <span style="color:#f92672">-</span> (address_t)encrypt_me <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>;
+</code></pre></div><p>We&rsquo;re using a void* type for the address of encrypt_me here, as we want to increment it by one byte at a time. If we don&rsquo;t do this and instead use an adress_t here, when we try to increment the address (addr+=1), it will increment by 8 bytes. This is because the size of an address on this architecture is 8 bytes (64 bits).</p>
+<p>The size of encrypt_me() can be calculated in this way, as we have seen in the objdump output that it resides after main() in memory. Therefore we can find the size of encrypt_me() by calculating the difference between the two, and subtract an additional byte to make the math line up with our encryption function.</p>
+<p>Lastly, we have our decryption loop.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#66d9ef">while</span> (function_size <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>)
+{
+    <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">=</span> <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">^</span> <span style="color:#ae81ff">0xFA</span>;
+    addr <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>;
+    function_size <span style="color:#f92672">-=</span> <span style="color:#ae81ff">1</span>;
+}
+</code></pre></div><p>This loop will iterate over each byte in the encrypt_me() function (addr += 1) as long as there are still bytes left to encrypt (function_size &gt; 0).</p>
+<p>At each iteration, it will decrypt (xor) the instruction residing at the current address (*(int *)addr) with our key (0xFA). We&rsquo;re converting to an (int *) here to allow for this arithmetic, and dereferencing the pointer to alter the actual instruction instead of the address the instruction resides at. We will then take the result and overwrite the formerly encrypted instruction byte.</p>
+<p>You might need to read that last bit a couple of times for it to make sense&hellip;</p>
+<p>Before we continue, we&rsquo;ll need to check where encrypt_me is living in memory now, as it has most likely moved.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ objdump -M intel -D main | grep <span style="color:#e6db74">&#34;&lt;encrypt_me&gt;:&#34;</span> -A <span style="color:#ae81ff">18</span>
+<span style="color:#ae81ff">0000000000401122</span> &lt;encrypt_me&gt;:
+  401122:       <span style="color:#ae81ff">55</span>                      push   rbp
+  401123:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp
+  401126:       <span style="color:#ae81ff">48</span> 8d 3d d7 0e <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xed7<span style="color:#f92672">]</span>        <span style="color:#75715e"># 402004 &lt;_IO_stdin_used+0x4&gt;</span>
+  40112d:       e8 fe fe ff ff          call   <span style="color:#ae81ff">401030</span> &lt;puts@plt&gt;
+  401132:       <span style="color:#ae81ff">90</span>                      nop
+  401133:       5d                      pop    rbp
+  401134:       c3                      ret    
+
+<span style="color:#ae81ff">0000000000401135</span> &lt;main&gt;:
+  401135:       <span style="color:#ae81ff">55</span>                      push   rbp
+  401136:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp
+  401139:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">83</span> ec <span style="color:#ae81ff">20</span>             sub    rsp,0x20
+  40113d:       c7 <span style="color:#ae81ff">45</span> ec <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    mov    DWORD PTR <span style="color:#f92672">[</span>rbp-0x14<span style="color:#f92672">]</span>,0x0
+  401144:       <span style="color:#ae81ff">48</span> 8d 3d ca 0e <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xeca<span style="color:#f92672">]</span>        <span style="color:#75715e"># 402015 &lt;_IO_stdin_used+0x15&gt;</span>
+  40114b:       e8 e0 fe ff ff          call   <span style="color:#ae81ff">401030</span> &lt;puts@plt&gt;
+  401150:       <span style="color:#ae81ff">48</span> 8d <span style="color:#ae81ff">05</span> cb ff ff ff    lea    rax,<span style="color:#f92672">[</span>rip+0xffffffffffffffcb<span style="color:#f92672">]</span>        <span style="color:#75715e"># 401122 &lt;encrypt_me&gt;</span>
+  401157:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> <span style="color:#ae81ff">45</span> f8             mov    QWORD PTR <span style="color:#f92672">[</span>rbp-0x8<span style="color:#f92672">]</span>,rax
+  40115b:       <span style="color:#ae81ff">48</span> 8d <span style="color:#ae81ff">05</span> d3 ff ff ff    lea    rax,<span style="color:#f92672">[</span>rip+0xffffffffffffffd3<span style="color:#f92672">]</span>        <span style="color:#75715e"># 401135 &lt;main&gt;</span>
+</code></pre></div><p>Based on this, we know we&rsquo;ll need to provide a start address of 0x401122 and a stop address of 0x401134 to our encryption python script.</p>
+<p>Alright, let&rsquo;s do this!</p>
+<p><img src="/images/decrypt-fail.gif" alt="Decryption Failure"></p>
+<p>Oh no! It failed. Don&rsquo;t worry, we&rsquo;ll have that fixed up in no time.</p>
+<hr>
+<p>As mentioned previously, the code in a binary resides in the .text section, let&rsquo;s take another look at it&hellip;</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ readelf -SW main | grep .text
+<span style="color:#f92672">[</span>13<span style="color:#f92672">]</span> .text             PROGBITS        <span style="color:#ae81ff">0000000000401040</span> <span style="color:#ae81ff">001040</span> 0001d1 <span style="color:#ae81ff">00</span>  AX  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">16</span>
+</code></pre></div><p>If you look near the end of the line, you&rsquo;ll see &ldquo;AX&rdquo;. These letters represent the current permission flags of this section of the binary. This differs from something like the data section, which has permissions &ldquo;WA&rdquo;.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#f92672">[</span>23<span style="color:#f92672">]</span> .data             PROGBITS        <span style="color:#ae81ff">0000000000404020</span> <span style="color:#ae81ff">003020</span> <span style="color:#ae81ff">000010</span> <span style="color:#ae81ff">00</span>  WA  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">8</span>
+</code></pre></div><p>The big difference between the two, is that the .text section is executable (makes sense since this is where the code lives) but not writable, and the .data section is writable but not executable.</p>
+<p>This is why we received a segfault when we attempted to write to the .text section in memory.</p>
+<p>Both of these sections are loaded into something called a <em>segment</em> once the binary is executing. Let&rsquo;s take a look at these segments.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">
+Elf file type is EXEC <span style="color:#f92672">(</span>Executable file<span style="color:#f92672">)</span>
+Entry point 0x401040
+There are <span style="color:#ae81ff">11</span> program headers, starting at offset <span style="color:#ae81ff">64</span>
+
+Program Headers:
+  Type           Offset   VirtAddr           PhysAddr           FileSiz  MemSiz   Flg Align
+  PHDR           0x000040 0x0000000000400040 0x0000000000400040 0x000268 0x000268 R   0x8
+  INTERP         0x0002a8 0x00000000004002a8 0x00000000004002a8 0x00001c 0x00001c R   0x1
+      <span style="color:#f92672">[</span>Requesting program interpreter: /lib64/ld-linux-x86-64.so.2<span style="color:#f92672">]</span>
+  LOAD           0x000000 0x0000000000400000 0x0000000000400000 0x000438 0x000438 R   0x1000
+  LOAD           0x001000 0x0000000000401000 0x0000000000401000 0x00021d 0x00021d R E 0x1000
+  LOAD           0x002000 0x0000000000402000 0x0000000000402000 0x000188 0x000188 R   0x1000
+  LOAD           0x002e10 0x0000000000403e10 0x0000000000403e10 0x000220 0x000228 RW  0x1000
+  DYNAMIC        0x002e20 0x0000000000403e20 0x0000000000403e20 0x0001d0 0x0001d0 RW  0x8
+  NOTE           0x0002c4 0x00000000004002c4 0x00000000004002c4 0x000044 0x000044 R   0x4
+  GNU_EH_FRAME   0x002024 0x0000000000402024 0x0000000000402024 0x000044 0x000044 R   0x4
+  GNU_STACK      0x000000 0x0000000000000000 0x0000000000000000 0x000000 0x000000 RW  0x10
+  GNU_RELRO      0x002e10 0x0000000000403e10 0x0000000000403e10 0x0001f0 0x0001f0 R   0x1
+
+ Section to Segment mapping:
+  Segment Sections...
+   <span style="color:#ae81ff">00</span>     
+   <span style="color:#ae81ff">01</span>     .interp 
+   <span style="color:#ae81ff">02</span>     .interp .note.ABI-tag .note.gnu.build-id .gnu.hash .dynsym .dynstr .gnu.version .gnu.version_r .rela.dyn .rela.plt 
+   <span style="color:#ae81ff">03</span>     .init .plt .text .fini 
+   <span style="color:#ae81ff">04</span>     .rodata .eh_frame_hdr .eh_frame 
+   <span style="color:#ae81ff">05</span>     .init_array .fini_array .dynamic .got .got.plt .data .bss 
+   <span style="color:#ae81ff">06</span>     .dynamic 
+   <span style="color:#ae81ff">07</span>     .note.ABI-tag .note.gnu.build-id 
+   <span style="color:#ae81ff">08</span>     .eh_frame_hdr 
+   <span style="color:#ae81ff">09</span>     
+   <span style="color:#ae81ff">10</span>     .init_array .fini_array .dynamic .got
+</code></pre></div><p>Reading this output, we can see from the Section to Segment mapping that the .text section maps to segment 3, shown below:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">LOAD           0x001000 0x0000000000401000 0x0000000000401000 0x00021d 0x00021d R E 0x1000
+</code></pre></div><p>As expected, this segment has Read and Execute permissions, but no write permissions.</p>
+<p>We could modify the binary to make the .text section and segment 03 writable, but many defensive tools <a href="https://blog.malwarebytes.com/glossary/signature/#:~:text=In%20computer%20security%2C%20a%20signature,used%20by%20families%20of%20malware.">signaturize</a> this kind of behavior.</p>
+<p>Instead, we&rsquo;ll use the mprotect function to change the permissions in memory at execution time.</p>
+<hr>
 <p>TODO:</p>
 <ul>
-<li>Add decryption logic</li>
-<li>Show segfault due to protections</li>
-<li>Show protections in readelf</li>
-<li>Talk about read write execute segment being flaggable, so use mprotect instead.</li>
 <li>Demonstrate decryption working</li>
 </ul>
 
