@@ -13,7 +13,7 @@
       <pubDate>Fri, 12 Nov 2021 13:00:44 -0600</pubDate>
       
       <guid>https://GreaterGoodest.github.io/post/elf_science_p1/</guid>
-      <description>One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will eventually be detected. At this point, the goal becomes making the analyst/reversers life as difficult as possible.
+      <description>Introduction One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will eventually be detected. At this point, the goal becomes making the analyst/reversers life as difficult as possible.
 There are a number of ways of doing this, including breaking your payload up into smaller chunks to limit exposure and loading functionality at runtime. However, this post will focus on a different method.</description>
     </item>
     

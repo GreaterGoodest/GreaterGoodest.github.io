@@ -13,11 +13,11 @@
     
     <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="ELF Science Part 1"/>
-<meta name="twitter:description" content="One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will eventually be detected. At this point, the goal becomes making the analyst/reversers life as difficult as possible.
+<meta name="twitter:description" content="Introduction One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will eventually be detected. At this point, the goal becomes making the analyst/reversers life as difficult as possible.
 There are a number of ways of doing this, including breaking your payload up into smaller chunks to limit exposure and loading functionality at runtime. However, this post will focus on a different method."/>
 
     <meta property="og:title" content="ELF Science Part 1" />
-<meta property="og:description" content="One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will eventually be detected. At this point, the goal becomes making the analyst/reversers life as difficult as possible.
+<meta property="og:description" content="Introduction One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will eventually be detected. At this point, the goal becomes making the analyst/reversers life as difficult as possible.
 There are a number of ways of doing this, including breaking your payload up into smaller chunks to limit exposure and loading functionality at runtime. However, this post will focus on a different method." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://GreaterGoodest.github.io/post/elf_science_p1/" /><meta property="article:section" content="post" />
@@ -56,6 +56,19 @@ There are a number of ways of doing this, including breaking your payload up int
           </a>
         
       </div>
+      <aside>
+      <nav id="TableOfContents">
+  <ul>
+    <li><a href="#introduction">Introduction</a></li>
+    <li><a href="#encryption">Encryption</a></li>
+    <li><a href="#payload">Payload</a></li>
+    <li><a href="#analysis">Analysis</a></li>
+    <li><a href="#decryption">Decryption</a></li>
+    <li><a href="#permissions">Permissions</a></li>
+    <li><a href="#final">Final</a></li>
+  </ul>
+</nav>
+      </aside>
     </header>
     <main class="app-container">
       
@@ -80,12 +93,14 @@ There are a number of ways of doing this, including breaking your payload up int
       </div>
     </header>
     <div class="post-content">
-      <p>One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will eventually be detected. At this point, the goal becomes making the analyst/reversers life as difficult as possible.</p>
+      <h2 id="introduction">Introduction</h2>
+<p>One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will eventually be detected. At this point, the goal becomes making the analyst/reversers life as difficult as possible.</p>
 <p>There are a number of ways of doing this, including breaking your payload up into smaller chunks to limit exposure and <a href="https://x-c3ll.github.io/posts/fileless-memfd_create/">loading functionality at runtime</a>. However, this post will focus on a different method. &ldquo;Hardening&rdquo; binary payloads.</p>
 <p>Binary hardening can involve a variety of techniques. For example, flexibility in binary formats allows for alterations that can confuse reversing tools. Another possible hardening procedure is <strong>encryption</strong>.</p>
 <p>Encrypting our binary will make it far more difficult for an analyst to examine it, as they will no longer be able to use their tools to dissasemble it. However, this may also increase the chances of the payload being detected due to <a href="https://www.cyberbit.com/blog/endpoint-security/malware-terms-code-entropy/">entropy</a>.</p>
 <p>An astute reader may immediately ask the question, &ldquo;But if the binary is encrypted, how can it execute?&rdquo;. The short answer is: <em>it can&rsquo;t</em>. However, we can fix this by having the binary decrypt itself. This series of posts will focus on automating the ability to do just that, as well as potentially adding additional hardening techniques.</p>
 <hr>
+<h2 id="encryption">Encryption</h2>
 <p>A possible way to do this would be to encrypt all functionality besides the entrypoint, then have the process decrypt it&rsquo;s other functions at the beginning of execution. Below is an example of how we could accomplish the encryption portion of this using Python:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e">#!/usr/bin/env python3</span>
 <span style="color:#f92672">import</span> sys
@@ -126,6 +141,7 @@ There are a number of ways of doing this, including breaking your payload up int
 <p>Now that we have our values, we can pass them to the encryption function (crypt). The encryption function calculates the length of data to encrypt. It then opens the binary to modify it appropriately. Once the binary is open, the file pointer is moved to the start address via seek() and then the data to encrypt is read in. We convert this data to a bytearray object, as bytes are immutable in python. Now that we have a byte array, we can modify it via our &ldquo;encryption&rdquo; method (single byte xor). We&rsquo;ll use a fixed key of 0xFA in this example.</p>
 <p>Once encryption is complete, the modified data can be converted back into bytes and written back to the binary.</p>
 <hr>
+<h2 id="payload">Payload</h2>
 <p>Next we&rsquo;ll need a basic binary to demonstrate our encryption on:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdio.h&gt;</span><span style="color:#75715e">
 </span><span style="color:#75715e"></span>
@@ -149,6 +165,7 @@ There are a number of ways of doing this, including breaking your payload up int
 </ul>
 <p>Disabling position independence will greatly simplify the following steps (Handling <a href="https://access.redhat.com/blogs/766093/posts/1975793">PIE</a> may be the subject of a later post).</p>
 <hr>
+<h2 id="analysis">Analysis</h2>
 <p>Let&rsquo;s take a look at the dissasembly of the encrypt_me() function</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ objdump -M intel -D main | grep <span style="color:#e6db74">&#34;&lt;encrypt_me&gt;:&#34;</span> -A <span style="color:#ae81ff">7</span>
 <span style="color:#ae81ff">0000000000401142</span> &lt;encrypt_me&gt;:
@@ -187,6 +204,7 @@ Encrypting main from address <span style="color:#ae81ff">4418</span> to address 
 </code></pre></div><p>As expected, it is now unintelligible. If we attempt to execute the binary, it will segfault once it reaches the encrypted function.</p>
 <p><img src="/images/segfault1.gif" alt="segfault GIF"></p>
 <hr>
+<h2 id="decryption">Decryption</h2>
 <p>Now we&rsquo;ll add our decryption logic:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdio.h&gt;</span><span style="color:#75715e">
 </span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdint.h&gt;</span><span style="color:#75715e">
@@ -261,6 +279,7 @@ address_t function_size <span style="color:#f92672">=</span> (address_t)main <sp
 <p><img src="/images/decrypt-fail.gif" alt="Decryption Failure"></p>
 <p>Oh no! It failed. Don&rsquo;t worry, we&rsquo;ll have that fixed up in no time.</p>
 <hr>
+<h2 id="permissions">Permissions</h2>
 <p>As mentioned previously, the code in a binary resides in the .text section, let&rsquo;s take another look at it&hellip;</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ readelf -SW main | grep .text
 <span style="color:#f92672">[</span>13<span style="color:#f92672">]</span> .text             PROGBITS        <span style="color:#ae81ff">0000000000401040</span> <span style="color:#ae81ff">001040</span> 0001d1 <span style="color:#ae81ff">00</span>  AX  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">16</span>
@@ -308,6 +327,7 @@ Program Headers:
 <p>We could modify the binary to make the .text section and segment 03 writable, but many defensive tools <a href="https://blog.malwarebytes.com/glossary/signature/#:~:text=In%20computer%20security%2C%20a%20signature,used%20by%20families%20of%20malware.">signaturize</a> this kind of behavior.</p>
 <p>Instead, we&rsquo;ll use the mprotect function to change the permissions in memory at execution time.</p>
 <hr>
+<h2 id="final">Final</h2>
 <p>Here&rsquo;s the new version of our self-modifying program:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdio.h&gt;</span><span style="color:#75715e">
 </span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/mman.h&gt;</span><span style="color:#75715e">
