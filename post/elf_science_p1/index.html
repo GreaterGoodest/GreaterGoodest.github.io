@@ -15,13 +15,13 @@
 <meta name="twitter:title" content="ELF Science Part 1"/>
 <meta name="twitter:description" content="Introduction Prereqs:
  C Python Mimimal x86 Some flavor of 64 bit linux (I&rsquo;ll be using Debian)  All code described can be found here
-One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will likely be detected eventually. At this point, the goal becomes making the analyst/reversers life as difficult as possible.
+One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will likely be detected eventually. At this point, the goal becomes making the analyst/reverser&rsquo;s life as difficult as possible.
 There are a number of ways of doing this, including breaking your payload up into smaller chunks to limit exposure and loading functionality at runtime."/>
 
     <meta property="og:title" content="ELF Science Part 1" />
 <meta property="og:description" content="Introduction Prereqs:
  C Python Mimimal x86 Some flavor of 64 bit linux (I&rsquo;ll be using Debian)  All code described can be found here
-One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will likely be detected eventually. At this point, the goal becomes making the analyst/reversers life as difficult as possible.
+One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will likely be detected eventually. At this point, the goal becomes making the analyst/reverser&rsquo;s life as difficult as possible.
 There are a number of ways of doing this, including breaking your payload up into smaller chunks to limit exposure and loading functionality at runtime." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://GreaterGoodest.github.io/post/elf_science_p1/" /><meta property="article:section" content="post" />
@@ -106,18 +106,18 @@ There are a number of ways of doing this, including breaking your payload up int
 <li>Some flavor of 64 bit linux (I&rsquo;ll be using <a href="https://www.debian.org/distrib/">Debian</a>)</li>
 </ul>
 <p>All code described can be found <a href="https://github.com/GreaterGoodest/elf-magic-1">here</a></p>
-<p>One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will likely be detected eventually. At this point, the goal becomes making the analyst/reversers life as difficult as possible.</p>
-<p>There are a number of ways of doing this, including breaking your payload up into smaller chunks to limit exposure and <a href="https://x-c3ll.github.io/posts/fileless-memfd_create/">loading functionality at runtime</a>. However, this post will focus on a different method. &ldquo;Hardening&rdquo; binary payloads.</p>
-<p>Binary hardening can involve a variety of techniques. For example, flexibility in binary formats allows for alterations that can confuse reversing tools. Another possible hardening procedure is <strong>encryption</strong>. This is also known as <a href="https://security.stackexchange.com/questions/4619/oligomorphism-vs-polymorphism-vs-metamorphism-in-malware">polymorphism</a>.</p>
+<p>One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will likely be detected eventually. At this point, the goal becomes making the analyst/reverser&rsquo;s life as difficult as possible.</p>
+<p>There are a number of ways of doing this, including breaking your payload up into smaller chunks to limit exposure and <a href="https://x-c3ll.github.io/posts/fileless-memfd_create/">loading functionality at runtime</a>. However, this post will focus on a different method: &ldquo;Hardening&rdquo; binary payloads.</p>
+<p>Binary hardening can involve a variety of techniques. For example, flexibility in binary formats allows for alterations that can confuse reversing tools. Another possible hardening procedure is <strong>encryption</strong>.</p>
+<p>Encrypting our binary will make it far more difficult for an analyst to examine it, as they will no longer be able to use their tools to dissasemble it. However, this may also increase the chances of the payload being detected due to <a href="https://www.cyberbit.com/blog/endpoint-security/malware-terms-code-entropy/">entropy</a>. Encrypting the binary masks its true form, essentially giving it a polyjuice potion.</p>
 <div style="text-align:center;">
     <img alt="Polyjuice potion" src="/images/Polyjuice-Potion.jpg" height=250 />
 </div>
-<p>Encrypting our binary will make it far more difficult for an analyst to examine it, as they will no longer be able to use their tools to dissasemble it. However, this may also increase the chances of the payload being detected due to <a href="https://www.cyberbit.com/blog/endpoint-security/malware-terms-code-entropy/">entropy</a>.</p>
 <p>An astute reader may immediately ask the question, &ldquo;But if the binary is encrypted, how can it execute?&rdquo;. The short answer is: <em>it can&rsquo;t</em>. However, we can fix this by having the binary decrypt itself. This series of posts will focus on automating the ability to do just that, as well as potentially adding additional hardening techniques.</p>
-<p>Disclaimer: In order to better defend against malware, it&rsquo;s important to understand it&rsquo;s functionality. This post is intended to be used as an educational resource only.</p>
+<p>Disclaimer: In order to better defend against malware, it&rsquo;s important to understand its functionality. This post is intended to be used as an educational resource only.</p>
 <hr>
 <h2 id="encryption">Encryption</h2>
-<p>Now that we&rsquo;ve established our goal of creating polymorphic code, how would we go about it? Once possible strategy is to encrypt all functionality besides the entrypoint, then have the process decrypt it&rsquo;s other functions at the beginning of execution. Below is an example of how we could accomplish the encryption portion of this using Python:</p>
+<p>Now that we&rsquo;ve established our goal of creating polymorphic code, how would we go about it? One possible strategy is to encrypt all functionality besides the entrypoint, then have the process decrypt its other functions at the beginning of execution. Below is an example of how we could accomplish the encryption portion of this using Python:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e">#!/usr/bin/env python3</span>
 <span style="color:#f92672">import</span> sys
 

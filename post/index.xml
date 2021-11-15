@@ -15,7 +15,7 @@
       <guid>https://GreaterGoodest.github.io/post/elf_science_p1/</guid>
       <description>Introduction Prereqs:
  C Python Mimimal x86 Some flavor of 64 bit linux (I&amp;rsquo;ll be using Debian)  All code described can be found here
-One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will likely be detected eventually. At this point, the goal becomes making the analyst/reversers life as difficult as possible.
+One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will likely be detected eventually. At this point, the goal becomes making the analyst/reverser&amp;rsquo;s life as difficult as possible.
 There are a number of ways of doing this, including breaking your payload up into smaller chunks to limit exposure and loading functionality at runtime.</description>
     </item>
     
