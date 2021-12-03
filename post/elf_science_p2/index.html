@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <title>ELF Science Part 2 // Goodest Blog</title>
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <meta charset="utf-8" />
+    <meta name="generator" content="Hugo 0.89.2" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="author" content="Ryan Good" />
+    <meta name="description" content="" />
+    <link rel="stylesheet" href="https://GreaterGoodest.github.io/css/main.min.88e7083eff65effb7485b6e6f38d10afbec25093a6fac42d734ce9024d3defbd.css" />
+
+    
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="ELF Science Part 2"/>
+<meta name="twitter:description" content="Introduction This post is a follow up to part 1.
+In the last post, we demonstrated a basic method for creating a self-decrypting binary. This is a common technique in many malware variants to add difficulty to the reverse engineering process.
+Inspired by some feedback from @marisa_hacks, this post will focus on dismantling our previous efforts.
+We&rsquo;ll perform dynamic analysis on the binary in order to step through to the point at which it is decrypted."/>
+
+    <meta property="og:title" content="ELF Science Part 2" />
+<meta property="og:description" content="Introduction This post is a follow up to part 1.
+In the last post, we demonstrated a basic method for creating a self-decrypting binary. This is a common technique in many malware variants to add difficulty to the reverse engineering process.
+Inspired by some feedback from @marisa_hacks, this post will focus on dismantling our previous efforts.
+We&rsquo;ll perform dynamic analysis on the binary in order to step through to the point at which it is decrypted." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://GreaterGoodest.github.io/post/elf_science_p2/" /><meta property="article:section" content="post" />
+<meta property="article:published_time" content="2021-12-02T19:30:17-06:00" />
+<meta property="article:modified_time" content="2021-12-02T19:30:17-06:00" />
+
+
+
+  </head>
+  <body>
+    <header class="app-header">
+      <a href="https://GreaterGoodest.github.io"><img class="app-header-avatar" src="/images/greatergoodest.jpg" alt="Ryan Good" /></a>
+      <h1>Goodest Blog</h1>
+      <p>Blogging about netsec and malware stuff</p>
+      <div class="app-header-social">
+        
+          <a href="https://www.linkedin.com/in/ryanagood/" target="_blank" rel="noreferrer noopener">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-linkedin">
+  <title>LinkedIn</title>
+  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle>
+</svg>
+          </a>
+        
+          <a href="https://github.com/GreaterGoodest/" target="_blank" rel="noreferrer noopener">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-github">
+  <title>GitHub</title>
+  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+</svg>
+          </a>
+        
+          <a href="https://twitter.com/GreaterGoodest" target="_blank" rel="noreferrer noopener">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-twitter">
+  <title>Twitter</title>
+  <path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path>
+</svg>
+          </a>
+        
+      </div>
+    <aside>
+      <nav id="TableOfContents">
+  <ul>
+    <li><a href="#introduction">Introduction</a></li>
+    <li><a href="#dynamic-analysis-and-decryption">Dynamic Analysis and Decryption</a></li>
+    <li><a href="#data-dump">Data Dump</a></li>
+    <li><a href="#patching">Patching</a></li>
+    <li><a href="#encryption-removal">Encryption Removal</a></li>
+  </ul>
+</nav>
+    </aside>
+    </header>
+    <main class="app-container">
+      
+  <article class="post">
+    <header class="post-header">
+      <h1 class ="post-title">ELF Science Part 2</h1>
+      <div class="post-meta">
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-calendar">
+  <title>calendar</title>
+  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+</svg>
+          Dec 2, 2021
+        </div>
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-clock">
+  <title>clock</title>
+  <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
+</svg>
+          7 min read
+        </div>
+      </div>
+    </header>
+    <div class="post-content">
+      <h2 id="introduction">Introduction</h2>
+<p>This post is a follow up to <a href="/post/elf_science_p1/">part 1</a>.</p>
+<p>In the last post, we demonstrated a basic method for creating a self-decrypting binary. This is a common technique in many malware variants to add difficulty to the reverse engineering process.</p>
+<p>Inspired by some feedback from <a href="https://twitter.com/marisa_hacks">@marisa_hacks</a>, this post will focus on dismantling our previous efforts.</p>
+<p>We&rsquo;ll perform dynamic analysis on the binary in order to step through to the point at which it is decrypted. Once we have the binary in it&rsquo;s decrypted form, we will dump out the executable portion of intrest. We will then overwrite the binary with this decrypted data, allowing for better static analysis in future. To take things a step further, we&rsquo;ll then strip out the encryption logic.</p>
+<h2 id="dynamic-analysis-and-decryption">Dynamic Analysis and Decryption</h2>
+<p>Let&rsquo;s take a look at the binary resulting from our previous post.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ objdump -D main -M intel| grep <span style="color:#e6db74">&#34;encrypt_me&gt;:&#34;</span> -A <span style="color:#ae81ff">12</span>
+<span style="color:#ae81ff">0000000000401142</span> &lt;encrypt_me&gt;:
+  401142:       af                      scas   eax,DWORD PTR es:<span style="color:#f92672">[</span>rdi<span style="color:#f92672">]</span>
+  401143:       b2 <span style="color:#ae81ff">73</span>                   mov    dl,0x73
+  401145:       1f                      <span style="color:#f92672">(</span>bad<span style="color:#f92672">)</span>  
+  401146:       b2 <span style="color:#ae81ff">77</span>                   mov    dl,0x77
+  401148:       c7                      <span style="color:#f92672">(</span>bad<span style="color:#f92672">)</span>  
+  401149:       4d f4                   rex.WRB hlt 
+  40114b:       fa                      cli    
+  40114c:       fa                      cli    
+  40114d:       <span style="color:#ae81ff">12</span> <span style="color:#ae81ff">14</span> <span style="color:#ae81ff">04</span>                adc    dl,BYTE PTR <span style="color:#f92672">[</span>rsp+rax*1<span style="color:#f92672">]</span>
+  401150:       <span style="color:#ae81ff">05</span> <span style="color:#ae81ff">05</span> 6a a7 c3          add    eax,0xc3a76a05
+
+<span style="color:#ae81ff">0000000000401155</span> &lt;main&gt;:
+</code></pre></div><p>As you can see, the encrypt_me function is currently gibberish due to it being encrypted. This function will be decrypted at run time, as the binary has self-decrypting logic built in.</p>
+<p>Let&rsquo;s see that decryption in action:</p>
+<p><img src="/images/gdb-decrypt.gif" alt="GDB Decrypt"></p>
+<p>We start by loading the binary into gdb (i&rsquo;m also using pwndbg). We then begin execution and break at the entrypoint by using the &lsquo;start&rsquo; command. After starting the process, we take a look at the encrypt_me function, and see that it is in it&rsquo;s encrypted state. Next, we set a breakpoint after the decryption is complete (line 32). After reaching that breakpoint, we take another look at the function and see that it is now decrypted.</p>
+<p>Our next goal will be to dump out that decrypted data.</p>
+<h2 id="data-dump">Data Dump</h2>
+<p>First, let&rsquo;s get back to the point at which encryption is complete, but before the encrypt_me() function is called (line 32).</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">In file: /home/rgood/Playground/self-decrypt/main.c
+   <span style="color:#ae81ff">27</span>         *<span style="color:#f92672">(</span>int *<span style="color:#f92672">)</span>addr <span style="color:#f92672">=</span> *<span style="color:#f92672">(</span>int *<span style="color:#f92672">)</span>addr ^ 0xFA;
+   <span style="color:#ae81ff">28</span>         addr<span style="color:#f92672">+=</span>1;
+   <span style="color:#ae81ff">29</span>         function_size -<span style="color:#f92672">=</span> 1;
+   <span style="color:#ae81ff">30</span>     <span style="color:#f92672">}</span>
+   <span style="color:#ae81ff">31</span>     
+ ► <span style="color:#ae81ff">32</span>     encrypt_me<span style="color:#f92672">()</span>;
+   <span style="color:#ae81ff">33</span> <span style="color:#f92672">}</span>
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+pwndbg&gt; disass encrypt_me 
+Dump of assembler code <span style="color:#66d9ef">for</span> <span style="color:#66d9ef">function</span> encrypt_me:
+   0x0000000000401142 &lt;+0&gt;:     push   rbp
+   0x0000000000401143 &lt;+1&gt;:     mov    rbp,rsp
+   0x0000000000401146 &lt;+4&gt;:     lea    rdi,<span style="color:#f92672">[</span>rip+0xeb7<span style="color:#f92672">]</span>        <span style="color:#75715e"># 0x402004</span>
+   0x000000000040114d &lt;+11&gt;:    call   0x401040 &lt;puts@plt&gt;
+   0x0000000000401152 &lt;+16&gt;:    nop
+   0x0000000000401153 &lt;+17&gt;:    pop    rbp
+   0x0000000000401154 &lt;+18&gt;:    ret    
+End of assembler dump.
+</code></pre></div><p>Here we can see that the encrypt_me() function ranges from address 0x401142 to 0x401154. Let&rsquo;s take a look at the process mappings to see where this address range resides using &lsquo;info proc mappings&rsquo;</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">pwndbg&gt; info proc mappings
+process <span style="color:#ae81ff">16796</span>
+Mapped address spaces:
+
+          Start Addr           End Addr       Size     Offset objfile                                                
+            0x400000           0x401000     0x1000        0x0 /home/rgood/Playground/self-decrypt/main               
+            0x401000           0x402000     0x1000     0x1000 /home/rgood/Playground/self-decrypt/main               
+            0x402000           0x403000     0x1000     0x2000 /home/rgood/Playground/self-decrypt/main               
+            0x403000           0x404000     0x1000     0x2000 /home/rgood/Playground/self-decrypt/main               
+            0x404000           0x405000     0x1000     0x3000 /home/rgood/Playground/self-decrypt/main               
+            0x405000           0x426000    0x21000        0x0 <span style="color:#f92672">[</span>heap<span style="color:#f92672">]</span>                                                 
+      0x7ffff7dea000     0x7ffff7e0c000    0x22000        0x0 /usr/lib/x86_64-linux-gnu/libc-2.28.so                 
+      0x7ffff7e0c000     0x7ffff7f54000   0x148000    0x22000 /usr/lib/x86_64-linux-gnu/libc-2.28.so                 
+      0x7ffff7f54000     0x7ffff7fa0000    0x4c000   0x16a000 /usr/lib/x86_64-linux-gnu/libc-2.28.so                 
+      0x7ffff7fa0000     0x7ffff7fa1000     0x1000   0x1b6000 /usr/lib/x86_64-linux-gnu/libc-2.28.so                 
+      0x7ffff7fa1000     0x7ffff7fa5000     0x4000   0x1b6000 /usr/lib/x86_64-linux-gnu/libc-2.28.so                 
+      0x7ffff7fa5000     0x7ffff7fa7000     0x2000   0x1ba000 /usr/lib/x86_64-linux-gnu/libc-2.28.so                 
+      0x7ffff7fa7000     0x7ffff7fad000     0x6000        0x0                                                        
+      0x7ffff7fd0000     0x7ffff7fd3000     0x3000        0x0 <span style="color:#f92672">[</span>vvar<span style="color:#f92672">]</span>                                                 
+      0x7ffff7fd3000     0x7ffff7fd5000     0x2000        0x0 <span style="color:#f92672">[</span>vdso<span style="color:#f92672">]</span>                                                 
+      0x7ffff7fd5000     0x7ffff7fd6000     0x1000        0x0 /usr/lib/x86_64-linux-gnu/ld-2.28.so                   
+      0x7ffff7fd6000     0x7ffff7ff4000    0x1e000     0x1000 /usr/lib/x86_64-linux-gnu/ld-2.28.so                   
+      0x7ffff7ff4000     0x7ffff7ffc000     0x8000    0x1f000 /usr/lib/x86_64-linux-gnu/ld-2.28.so                   
+      0x7ffff7ffc000     0x7ffff7ffd000     0x1000    0x26000 /usr/lib/x86_64-linux-gnu/ld-2.28.so                   
+      0x7ffff7ffd000     0x7ffff7ffe000     0x1000    0x27000 /usr/lib/x86_64-linux-gnu/ld-2.28.so                   
+      0x7ffff7ffe000     0x7ffff7fff000     0x1000        0x0                                                        
+      0x7ffffffde000     0x7ffffffff000    0x21000        0x0 <span style="color:#f92672">[</span>stack<span style="color:#f92672">]</span>
+</code></pre></div><p>From this output, we can see that the function resides in a chunk of memory ranging from address 0x401000 to 0x402000. Let&rsquo;s go ahead and dump all that memory out.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">pwndbg&gt; dump binary memory data.bin 0x401000 0x402000
+</code></pre></div><p>Now we have a data.bin file that contains the decrypted function.</p>
+<h2 id="patching">Patching</h2>
+<p>The next step is to patch the original binary with the decrypted data held within data.bin. To do that, we&rsquo;ll use another python script called &ldquo;overwrite.py&rdquo;.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e">#!/usr/bin/env python3</span>
+<span style="color:#f92672">import</span> sys
+
+<span style="color:#66d9ef">def</span> <span style="color:#a6e22e">stomp</span>(binary: str, write_address: int, replacement: str):
+    <span style="color:#e6db74">&#34;&#34;&#34;Overwrites binary with data contained in replacement file
+</span><span style="color:#e6db74">       Starting at write_address 
+</span><span style="color:#e6db74">    &#34;&#34;&#34;</span>
+    replacement_data <span style="color:#f92672">=</span> <span style="color:#66d9ef">None</span>
+    <span style="color:#66d9ef">with</span> open(replacement, <span style="color:#e6db74">&#39;rb&#39;</span>) <span style="color:#66d9ef">as</span> f:
+        replacement_data <span style="color:#f92672">=</span> f<span style="color:#f92672">.</span>read(<span style="color:#ae81ff">0x1000</span>)
+
+    <span style="color:#66d9ef">with</span> open(binary, <span style="color:#e6db74">&#39;rb+&#39;</span>) <span style="color:#66d9ef">as</span> f:
+        f<span style="color:#f92672">.</span>seek(write_address)
+        f<span style="color:#f92672">.</span>write(replacement_data)
+
+<span style="color:#66d9ef">if</span> __name__ <span style="color:#f92672">==</span> <span style="color:#e6db74">&#34;__main__&#34;</span>:
+    <span style="color:#66d9ef">if</span> len(sys<span style="color:#f92672">.</span>argv) <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">4</span>:
+        print(<span style="color:#e6db74">&#34;Usage: ./overwrite [binary] [write address] [replacement]&#34;</span>)
+        sys<span style="color:#f92672">.</span>exit(<span style="color:#ae81ff">1</span>)
+
+    binary <span style="color:#f92672">=</span> sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">1</span>]
+
+    write_address <span style="color:#f92672">=</span> sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">2</span>]
+    <span style="color:#66d9ef">try</span>:
+        write_address <span style="color:#f92672">=</span> int(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">2</span>])        <span style="color:#75715e">#encryption start address</span>
+    <span style="color:#66d9ef">except</span> <span style="color:#a6e22e">ValueError</span>:
+        write_address <span style="color:#f92672">=</span> int(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">2</span>], <span style="color:#ae81ff">16</span>)
+
+    replacement <span style="color:#f92672">=</span> sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">3</span>]
+    stomp(binary, write_address, replacement)
+</code></pre></div><p>This script takes in as arguments the original binary to be modified (arg 1), the address in the binary at which to write (arg 2), and the file containing the data to put there (arg 3).</p>
+<p>This isn&rsquo;t really using any new methods from what we saw in the first post in this series. It opens the file containing the replacement data, and reads it into memory. It then opens the original binary file, seeks to the address we provided, and overwrites the data there with the replacement data.</p>
+<p>We can now use this script to patch our binary</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ ./overwrite.py main 0x1000 data.bin
+</code></pre></div><p>You&rsquo;ll remember from part 1 that 0x1000 is where the data actually resides on disk, so this is where we will write the replacement data.</p>
+<p>Now we can see that our binary contains the decrypted function while at rest</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ objdump -D main -M intel| grep <span style="color:#e6db74">&#34;encrypt_me&gt;:&#34;</span> -A <span style="color:#ae81ff">8</span>
+<span style="color:#ae81ff">0000000000401142</span> &lt;encrypt_me&gt;:
+  401142:       <span style="color:#ae81ff">55</span>                      push   rbp
+  401143:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp
+  401146:       <span style="color:#ae81ff">48</span> 8d 3d b7 0e <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xeb7<span style="color:#f92672">]</span>        <span style="color:#75715e"># 402004 &lt;_IO_stdin_used+0x4&gt;</span>
+  40114d:       e8 ee fe ff ff          call   <span style="color:#ae81ff">401040</span> &lt;puts@plt&gt;
+  401152:       <span style="color:#ae81ff">90</span>                      nop
+  401153:       5d                      pop    rbp
+  401154:       c3                      ret  
+</code></pre></div><p>In a larger more complex binary, having all of the functionality in a decrypted state like this would make static analysis much easier. Enabling analysts to gain a more in depth understanding of the sample&rsquo;s functionality without it needing to be detonated.</p>
+<h2 id="encryption-removal">Encryption Removal</h2>
+<p>At this point, the binary is decrypted. However, if we attempt to run it we will get a crash.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ ./main 
+Main <span style="color:#66d9ef">function</span>
+Illegal instruction
+</code></pre></div><p>This is because the binary is attempted to &ldquo;decrypt&rdquo; an already decrypted function. The result is a crash due to attempting to execute garbage instructions.</p>
+<p>In this example, we can quickly patch this by NOPing out the xor instructions, as this will remove our simple encryption. NOP is an instruction that simply does nothing, and the hex code for it is 0x90. Replacing the encryption xor instruction with this will remove that logic cleanly.</p>
+<p>Let&rsquo;s take at the main() function:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ objdump -D main -M intel| grep <span style="color:#e6db74">&#34;main&gt;:&#34;</span> -A <span style="color:#ae81ff">32</span>
+<span style="color:#ae81ff">0000000000401155</span> &lt;main&gt;:
+  401155:       <span style="color:#ae81ff">55</span>                      push   rbp
+  401156:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp
+  401159:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">83</span> ec <span style="color:#ae81ff">20</span>             sub    rsp,0x20
+  40115d:       c7 <span style="color:#ae81ff">45</span> ec <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    mov    DWORD PTR <span style="color:#f92672">[</span>rbp-0x14<span style="color:#f92672">]</span>,0x0
+  401164:       <span style="color:#ae81ff">48</span> 8d 3d aa 0e <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xeaa<span style="color:#f92672">]</span>        <span style="color:#75715e"># 402015 &lt;_IO_stdin_used+0x15&gt;</span>
+  40116b:       e8 d0 fe ff ff          call   <span style="color:#ae81ff">401040</span> &lt;puts@plt&gt;
+  401170:       <span style="color:#ae81ff">48</span> 8d <span style="color:#ae81ff">05</span> cb ff ff ff    lea    rax,<span style="color:#f92672">[</span>rip+0xffffffffffffffcb<span style="color:#f92672">]</span>        <span style="color:#75715e"># 401142 &lt;encrypt_me&gt;</span>
+  401177:       <span style="color:#ae81ff">25</span> <span style="color:#ae81ff">00</span> f0 ff <span style="color:#ae81ff">00</span>          and    eax,0xfff000
+  40117c:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> <span style="color:#ae81ff">45</span> e0             mov    QWORD PTR <span style="color:#f92672">[</span>rbp-0x20<span style="color:#f92672">]</span>,rax
+  401180:       <span style="color:#ae81ff">48</span> 8b <span style="color:#ae81ff">45</span> e0             mov    rax,QWORD PTR <span style="color:#f92672">[</span>rbp-0x20<span style="color:#f92672">]</span>
+  401184:       ba <span style="color:#ae81ff">07</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>          mov    edx,0x7
+  401189:       be <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">10</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>          mov    esi,0x1000
+  40118e:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> c7                mov    rdi,rax
+  401191:       e8 ba fe ff ff          call   <span style="color:#ae81ff">401050</span> &lt;mprotect@plt&gt;
+  401196:       <span style="color:#ae81ff">89</span> <span style="color:#ae81ff">45</span> ec                mov    DWORD PTR <span style="color:#f92672">[</span>rbp-0x14<span style="color:#f92672">]</span>,eax
+  401199:       <span style="color:#ae81ff">83</span> 7d ec <span style="color:#ae81ff">00</span>             cmp    DWORD PTR <span style="color:#f92672">[</span>rbp-0x14<span style="color:#f92672">]</span>,0x0
+  40119d:       <span style="color:#ae81ff">79</span> <span style="color:#ae81ff">09</span>                   jns    4011a8 &lt;main+0x53&gt;
+  40119f:       e8 8c fe ff ff          call   <span style="color:#ae81ff">401030</span> &lt;__errno_location@plt&gt;
+  4011a4:       8b <span style="color:#ae81ff">00</span>                   mov    eax,DWORD PTR <span style="color:#f92672">[</span>rax<span style="color:#f92672">]</span>
+  4011a6:       eb <span style="color:#ae81ff">59</span>                   jmp    <span style="color:#ae81ff">401201</span> &lt;main+0xac&gt;
+  4011a8:       <span style="color:#ae81ff">48</span> 8d <span style="color:#ae81ff">05</span> <span style="color:#ae81ff">93</span> ff ff ff    lea    rax,<span style="color:#f92672">[</span>rip+0xffffffffffffff93<span style="color:#f92672">]</span>        <span style="color:#75715e"># 401142 &lt;encrypt_me&gt;</span>
+  4011af:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> <span style="color:#ae81ff">45</span> f8             mov    QWORD PTR <span style="color:#f92672">[</span>rbp-0x8<span style="color:#f92672">]</span>,rax
+  4011b3:       <span style="color:#ae81ff">48</span> 8d <span style="color:#ae81ff">05</span> 9b ff ff ff    lea    rax,<span style="color:#f92672">[</span>rip+0xffffffffffffff9b<span style="color:#f92672">]</span>        <span style="color:#75715e"># 401155 &lt;main&gt;</span>
+  4011ba:       <span style="color:#ae81ff">48</span> 8d <span style="color:#ae81ff">50</span> ff             lea    rdx,<span style="color:#f92672">[</span>rax-0x1<span style="color:#f92672">]</span>
+  4011be:       <span style="color:#ae81ff">48</span> 8d <span style="color:#ae81ff">05</span> 7d ff ff ff    lea    rax,<span style="color:#f92672">[</span>rip+0xffffffffffffff7d<span style="color:#f92672">]</span>        <span style="color:#75715e"># 401142 &lt;encrypt_me&gt;</span>
+  4011c5:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">29</span> c2                sub    rdx,rax
+  4011c8:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> d0                mov    rax,rdx
+  4011cb:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> <span style="color:#ae81ff">45</span> f0             mov    QWORD PTR <span style="color:#f92672">[</span>rbp-0x10<span style="color:#f92672">]</span>,rax
+  4011cf:       eb 1a                   jmp    4011eb &lt;main+0x96&gt;
+  4011d1:       <span style="color:#ae81ff">48</span> 8b <span style="color:#ae81ff">45</span> f8             mov    rax,QWORD PTR <span style="color:#f92672">[</span>rbp-0x8<span style="color:#f92672">]</span>
+  4011d5:       8b <span style="color:#ae81ff">00</span>                   mov    eax,DWORD PTR <span style="color:#f92672">[</span>rax<span style="color:#f92672">]</span>
+  4011d7:       <span style="color:#ae81ff">34</span> fa                   xor    al,0xfa
+</code></pre></div><p>At the end of the printed instructions, we can see our xor encryption culprit. The instructions to accomplish the xor is 0x34 0xfa, where 0x34 is the code for xor, and 0xfa is the encryption/decryption key.</p>
+<p>Let&rsquo;s NOP out those instructions.</p>
+<p><img src="/images/nop-out.gif" alt="Nop Out"></p>
+<p>We now have a decrypted sample that we can analyze/detonate as we desire!</p>
+
+    </div>
+    <div class="post-footer">
+      <div id="disqus_thread"></div>
+<script type="application/javascript">
+    var disqus_config = function () {
+    
+    
+    
+    };
+    (function() {
+        if (["localhost", "127.0.0.1"].indexOf(window.location.hostname) != -1) {
+            document.getElementById('disqus_thread').innerHTML = 'Disqus comments not available by default when the website is previewed locally.';
+            return;
+        }
+        var d = document, s = d.createElement('script'); s.async = true;
+        s.src = '//' + "https-greatergoodest-github-io" + '.disqus.com/embed.js';
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="https://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+    </div>
+  </article>
+
+    </main>
+  </body>
+</html>
