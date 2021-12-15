@@ -4,11 +4,11 @@
     <title>ELF Science Part 2 // Goodest Blog</title>
     <link rel="shortcut icon" href="/favicon.ico" />
     <meta charset="utf-8" />
-    <meta name="generator" content="Hugo 0.89.2" />
+    <meta name="generator" content="Hugo 0.90.1" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="author" content="Ryan Good" />
     <meta name="description" content="" />
-    <link rel="stylesheet" href="https://GreaterGoodest.github.io/css/main.min.88e7083eff65effb7485b6e6f38d10afbec25093a6fac42d734ce9024d3defbd.css" />
+    <link rel="stylesheet" href="https://GreaterGoodest.github.io/css/main.min.10e29dc68baafd87fe6d59b56ecc8c1e5058ee779d7de160d75db605c2d32423.css" />
 
     
     <meta name="twitter:card" content="summary"/>
@@ -35,7 +35,7 @@ We&rsquo;ll perform dynamic analysis on the binary in order to step through to t
     <header class="app-header">
       <a href="https://GreaterGoodest.github.io"><img class="app-header-avatar" src="/images/greatergoodest.jpg" alt="Ryan Good" /></a>
       <h1>Goodest Blog</h1>
-      <p>Blogging about netsec and malware stuff</p>
+      <p>Blogging about dev, netsec, and malware</p>
       <div class="app-header-social">
         
           <a href="https://www.linkedin.com/in/ryanagood/" target="_blank" rel="noreferrer noopener">
@@ -64,7 +64,7 @@ We&rsquo;ll perform dynamic analysis on the binary in order to step through to t
       <nav id="TableOfContents">
   <ul>
     <li><a href="#introduction">Introduction</a></li>
-    <li><a href="#dynamic-analysis-and-decryption">Dynamic Analysis and Decryption</a></li>
+    <li><a href="#analysis-and-decryption">Analysis and Decryption</a></li>
     <li><a href="#data-dump">Data Dump</a></li>
     <li><a href="#patching">Patching</a></li>
     <li><a href="#encryption-removal">Encryption Removal</a></li>
@@ -100,7 +100,7 @@ We&rsquo;ll perform dynamic analysis on the binary in order to step through to t
 <p>In the last post, we demonstrated a basic method for creating a self-decrypting binary. This is a common technique in many malware variants to add difficulty to the reverse engineering process.</p>
 <p>Inspired by some feedback from <a href="https://twitter.com/marisa_hacks">@marisa_hacks</a>, this post will focus on dismantling our previous efforts.</p>
 <p>We&rsquo;ll perform dynamic analysis on the binary in order to step through to the point at which it is decrypted. Once we have the binary in it&rsquo;s decrypted form, we will dump out the executable portion of intrest. We will then overwrite the binary with this decrypted data, allowing for better static analysis in future. To take things a step further, we&rsquo;ll then strip out the encryption logic.</p>
-<h2 id="dynamic-analysis-and-decryption">Dynamic Analysis and Decryption</h2>
+<h2 id="analysis-and-decryption">Analysis and Decryption</h2>
 <p>Let&rsquo;s take a look at the binary resulting from our previous post.</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ objdump -D main -M intel| grep <span style="color:#e6db74">&#34;encrypt_me&gt;:&#34;</span> -A <span style="color:#ae81ff">12</span>
 <span style="color:#ae81ff">0000000000401142</span> &lt;encrypt_me&gt;:
