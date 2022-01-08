@@ -327,7 +327,7 @@ Name:   gdb
 }
 </code></pre></div><h2 id="anti-anti-re">Anti-Anti-RE</h2>
 <p>This implementation is fairly trivial, and real world samples will make it much more difficult to determine that they are even doing these checks.</p>
-<p>To defeat this exmample, we&rsquo;ll just add in a relative jump.</p>
+<p>To defeat this example, we&rsquo;ll just add in a relative jump.</p>
 <p>By looking at the dissasembly, we can see the distance we need to jump.</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">00000000000013e6 &lt;main&gt;:                                                                                              
     13e6:       <span style="color:#ae81ff">55</span>                      push   rbp                                                                    
@@ -391,7 +391,7 @@ Name:   gdb
     1449:       0f 1f <span style="color:#ae81ff">80</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    nop    DWORD PTR <span style="color:#f92672">[</span>rax+0x0<span style="color:#f92672">]</span> 
 </code></pre></div><p>I&rsquo;m not sure why the relative jump ended up being interpreted as 47 bytes, but we can now execute the sample without triggering any of its detection methods.</p>
 <h2 id="conclusion">Conclusion</h2>
-<p>The methodologies shown here are a highly simplified version of real world techniques, that are still useful to showcase what is possible in the realm of anti-RE. Feel free to contact me with any suggestions and/or corrections. Thanks for reading!</p>
+<p>The methodologies shown here are a highly simplified version of real world techniques, but are still useful to showcase what is possible in the realm of anti-RE. Feel free to contact me with any suggestions and/or corrections. Thanks for reading!</p>
 
     </div>
     <div class="post-footer">
