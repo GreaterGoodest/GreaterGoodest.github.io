@@ -4,7 +4,7 @@
     <title>ELF Science Part 2 // Goodest Blog</title>
     <link rel="shortcut icon" href="/favicon.ico" />
     <meta charset="utf-8" />
-    <meta name="generator" content="Hugo 0.90.1" />
+    <meta name="generator" content="Hugo 0.89.2" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="author" content="Ryan Good" />
     <meta name="description" content="" />
@@ -13,14 +13,14 @@
     
     <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="ELF Science Part 2"/>
-<meta name="twitter:description" content="Introduction This post is a follow up to part 1.
-In the last post, we demonstrated a basic method for creating a self-decrypting binary. This is a common technique in many malware variants to add difficulty to the reverse engineering process.
+<meta name="twitter:description" content="Introduction This post is part of a three part series (so far)
+ Part 1 Part 3  In the last post, we demonstrated a basic method for creating a self-decrypting binary. This is a common technique in many malware variants to add difficulty to the reverse engineering process.
 Inspired by some feedback from @marisa_hacks, this post will focus on dismantling our previous efforts.
 We&rsquo;ll perform dynamic analysis on the binary in order to step through to the point at which it is decrypted."/>
 
     <meta property="og:title" content="ELF Science Part 2" />
-<meta property="og:description" content="Introduction This post is a follow up to part 1.
-In the last post, we demonstrated a basic method for creating a self-decrypting binary. This is a common technique in many malware variants to add difficulty to the reverse engineering process.
+<meta property="og:description" content="Introduction This post is part of a three part series (so far)
+ Part 1 Part 3  In the last post, we demonstrated a basic method for creating a self-decrypting binary. This is a common technique in many malware variants to add difficulty to the reverse engineering process.
 Inspired by some feedback from @marisa_hacks, this post will focus on dismantling our previous efforts.
 We&rsquo;ll perform dynamic analysis on the binary in order to step through to the point at which it is decrypted." />
 <meta property="og:type" content="article" />
@@ -96,7 +96,11 @@ We&rsquo;ll perform dynamic analysis on the binary in order to step through to t
     </header>
     <div class="post-content">
       <h2 id="introduction">Introduction</h2>
-<p>This post is a follow up to <a href="/post/elf_science_p1/">part 1</a>.</p>
+<p>This post is part of a three part series (so far)</p>
+<ul>
+<li><a href="/post/elf_science_p1/">Part 1</a></li>
+<li><a href="/post/elf_science_p3/">Part 3</a></li>
+</ul>
 <p>In the last post, we demonstrated a basic method for creating a self-decrypting binary. This is a common technique in many malware variants to add difficulty to the reverse engineering process.</p>
 <p>Inspired by some feedback from <a href="https://twitter.com/marisa_hacks">@marisa_hacks</a>, this post will focus on dismantling our previous efforts.</p>
 <p>We&rsquo;ll perform dynamic analysis on the binary in order to step through to the point at which it is decrypted. Once we have the binary in it&rsquo;s decrypted form, we will dump out the executable portion of intrest. We will then overwrite the binary with this decrypted data, allowing for better static analysis in future. To take things a step further, we&rsquo;ll then strip out the encryption logic.</p>

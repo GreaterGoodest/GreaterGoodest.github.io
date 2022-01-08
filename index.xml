@@ -6,15 +6,26 @@
     <description>Recent content on Goodest Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 02 Dec 2021 19:30:17 -0600</lastBuildDate><atom:link href="https://GreaterGoodest.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Fri, 07 Jan 2022 20:57:52 -0600</lastBuildDate><atom:link href="https://GreaterGoodest.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>ELF Science Part 3</title>
+      <link>https://GreaterGoodest.github.io/post/elf_science_p3/</link>
+      <pubDate>Fri, 07 Jan 2022 20:57:52 -0600</pubDate>
+      
+      <guid>https://GreaterGoodest.github.io/post/elf_science_p3/</guid>
+      <description>Introduction This post is part of a three part series (so far)
+ Part 1 Part 2  As usual, a regularly updated version of the code base associated with this series can be found on my github.
+In the last edition of ELF Science, we defeated our encryption methodology by running the binary in a debugger, setting a breakpoint after self-decryption is complete, and dumping the decrypted memory. We then re-wrote the binary using these decrypted instructions, and NOP&amp;rsquo;d out the xor encryption method.</description>
+    </item>
+    
     <item>
       <title>ELF Science Part 2</title>
       <link>https://GreaterGoodest.github.io/post/elf_science_p2/</link>
       <pubDate>Thu, 02 Dec 2021 19:30:17 -0600</pubDate>
       
       <guid>https://GreaterGoodest.github.io/post/elf_science_p2/</guid>
-      <description>Introduction This post is a follow up to part 1.
-In the last post, we demonstrated a basic method for creating a self-decrypting binary. This is a common technique in many malware variants to add difficulty to the reverse engineering process.
+      <description>Introduction This post is part of a three part series (so far)
+ Part 1 Part 3  In the last post, we demonstrated a basic method for creating a self-decrypting binary. This is a common technique in many malware variants to add difficulty to the reverse engineering process.
 Inspired by some feedback from @marisa_hacks, this post will focus on dismantling our previous efforts.
 We&amp;rsquo;ll perform dynamic analysis on the binary in order to step through to the point at which it is decrypted.</description>
     </item>
@@ -25,10 +36,10 @@ We&amp;rsquo;ll perform dynamic analysis on the binary in order to step through 
       <pubDate>Mon, 15 Nov 2021 16:00:44 -0600</pubDate>
       
       <guid>https://GreaterGoodest.github.io/post/elf_science_p1/</guid>
-      <description>Introduction You can find part 2 in this series here
-Prereqs:
+      <description>Introduction This post is part of a three part series (so far)
+ Part 2 Part 3  Prereqs:
  C Python Mimimal x86 Some flavor of 64 bit linux (I&amp;rsquo;ll be using Debian)  All code described can be found here
-One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will likely be detected eventually. At this point, the goal becomes making the analyst/reverser&amp;rsquo;s life as difficult as possible.</description>
+One of the most difficult parts of creating offensive tools is preventing detection. Even if you employ the most advanced methodologies available, your tool will likely be detected eventually.</description>
     </item>
     
   </channel>
