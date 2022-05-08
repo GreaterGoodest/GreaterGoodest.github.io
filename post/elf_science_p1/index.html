@@ -4,7 +4,7 @@
     <title>ELF Science Part 1 // Goodest Blog</title>
     <link rel="shortcut icon" href="/favicon.ico" />
     <meta charset="utf-8" />
-    <meta name="generator" content="Hugo 0.89.2" />
+    <meta name="generator" content="Hugo 0.96.0" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="author" content="Ryan Good" />
     <meta name="description" content="" />
@@ -123,85 +123,85 @@ One of the most difficult parts of creating offensive tools is preventing detect
 <hr>
 <h2 id="encryption">Encryption</h2>
 <p>Now that we&rsquo;ve established our goal of creating self-decrypting code, how would we go about it? One possible strategy is to encrypt all functionality besides the entrypoint, then have the process decrypt its other functions at the beginning of execution. Below is an example of how we could accomplish the encryption portion of this using Python:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e">#!/usr/bin/env python3</span>
-<span style="color:#f92672">import</span> sys
-
-<span style="color:#66d9ef">def</span> <span style="color:#a6e22e">crypt</span>(binary: str, start: int, stop: int):
-    <span style="color:#e6db74">&#34;&#34;&#34;Encrypts the provided binary from start address to stop address&#34;&#34;&#34;</span>
-    print(<span style="color:#e6db74">f</span><span style="color:#e6db74">&#34;Encrypting </span><span style="color:#e6db74">{</span>binary<span style="color:#e6db74">}</span><span style="color:#e6db74"> from address </span><span style="color:#e6db74">{</span>start<span style="color:#e6db74">}</span><span style="color:#e6db74"> to address </span><span style="color:#e6db74">{</span>stop<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>)
-    size <span style="color:#f92672">=</span> stop <span style="color:#f92672">-</span> start                 <span style="color:#75715e">#size of space to be encrypted</span>
-    <span style="color:#66d9ef">with</span> open(binary, <span style="color:#e6db74">&#39;rb+&#39;</span>) <span style="color:#66d9ef">as</span> f:
-        f<span style="color:#f92672">.</span>seek(start)                   <span style="color:#75715e">#move file pointer to start address</span>
-        data <span style="color:#f92672">=</span> bytearray(f<span style="color:#f92672">.</span>read(size))  <span style="color:#75715e">#read in data to be encrypted</span>
-        <span style="color:#66d9ef">for</span> i <span style="color:#f92672">in</span> range(len(data)):      <span style="color:#75715e">#encrypt data using single byte xor</span>
-            data[i] <span style="color:#f92672">=</span> data[i] <span style="color:#f92672">^</span> <span style="color:#ae81ff">0xFA</span>
-        data <span style="color:#f92672">=</span> bytes(data)              <span style="color:#75715e">#convert back to bytes for writing to binary</span>
-
-        f<span style="color:#f92672">.</span>seek(start)                   <span style="color:#75715e">#return to start address</span>
-        f<span style="color:#f92672">.</span>write(data)                   <span style="color:#75715e">#replace data with encrypted version</span>
-
-
-<span style="color:#66d9ef">if</span> __name__ <span style="color:#f92672">==</span> <span style="color:#e6db74">&#34;__main__&#34;</span>:
-    <span style="color:#66d9ef">if</span> len(sys<span style="color:#f92672">.</span>argv) <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">4</span>:
-        print(<span style="color:#e6db74">&#34;Usage: ./crypt [binary] [start address] [stop address]&#34;</span>)
-        sys<span style="color:#f92672">.</span>exit(<span style="color:#ae81ff">1</span>)
-
-    binary <span style="color:#f92672">=</span> sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">1</span>]                <span style="color:#75715e">#binary file name</span>
-    <span style="color:#66d9ef">try</span>:
-        start <span style="color:#f92672">=</span> int(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">2</span>])        <span style="color:#75715e">#encryption start address</span>
-    <span style="color:#66d9ef">except</span> <span style="color:#a6e22e">ValueError</span>:
-        start <span style="color:#f92672">=</span> int(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">2</span>], <span style="color:#ae81ff">16</span>)
-
-    <span style="color:#66d9ef">try</span>:
-        stop <span style="color:#f92672">=</span> int(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">3</span>])         <span style="color:#75715e">#encryption end address</span>
-    <span style="color:#66d9ef">except</span> <span style="color:#a6e22e">ValueError</span>:
-        stop <span style="color:#f92672">=</span> int(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">3</span>], <span style="color:#ae81ff">16</span>)
-
-    crypt(binary, start, stop)
-</code></pre></div><p>The encryption script begins by retrieving the relevant values from the command line invocation.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">binary <span style="color:#f92672">=</span> sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">1</span>]                <span style="color:#75715e">#binary file name</span>
-<span style="color:#66d9ef">try</span>:
-    start <span style="color:#f92672">=</span> int(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">2</span>])        <span style="color:#75715e">#encryption start address</span>
-<span style="color:#66d9ef">except</span> <span style="color:#a6e22e">ValueError</span>:
-    start <span style="color:#f92672">=</span> int(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">2</span>], <span style="color:#ae81ff">16</span>)
-
-<span style="color:#66d9ef">try</span>:
-    stop <span style="color:#f92672">=</span> int(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">3</span>])         <span style="color:#75715e">#encryption end address</span>
-<span style="color:#66d9ef">except</span> <span style="color:#a6e22e">ValueError</span>:
-    stop <span style="color:#f92672">=</span> int(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">3</span>], <span style="color:#ae81ff">16</span>)
-</code></pre></div><p>This includes the name of the binary to encrypt, the start address of encryption, and the end address of encryption. If any of these values are missing, we will print usage instructions and exit with a non-zero exit code to signify an error occurred. The start address and stop address will then be converted to integers. They can be provided in either base 10 or base 16 format, thanks to the added exception handling.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#75715e">#!/usr/bin/env python3</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> sys
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">crypt</span>(binary: str, start: int, stop: int):
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;&#34;&#34;Encrypts the provided binary from start address to stop address&#34;&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>    print(<span style="color:#e6db74">f</span><span style="color:#e6db74">&#34;Encrypting </span><span style="color:#e6db74">{</span>binary<span style="color:#e6db74">}</span><span style="color:#e6db74"> from address </span><span style="color:#e6db74">{</span>start<span style="color:#e6db74">}</span><span style="color:#e6db74"> to address </span><span style="color:#e6db74">{</span>stop<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>)
+</span></span><span style="display:flex;"><span>    size <span style="color:#f92672">=</span> stop <span style="color:#f92672">-</span> start                 <span style="color:#75715e">#size of space to be encrypted</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">with</span> open(binary, <span style="color:#e6db74">&#39;rb+&#39;</span>) <span style="color:#66d9ef">as</span> f:
+</span></span><span style="display:flex;"><span>        f<span style="color:#f92672">.</span>seek(start)                   <span style="color:#75715e">#move file pointer to start address</span>
+</span></span><span style="display:flex;"><span>        data <span style="color:#f92672">=</span> bytearray(f<span style="color:#f92672">.</span>read(size))  <span style="color:#75715e">#read in data to be encrypted</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> i <span style="color:#f92672">in</span> range(len(data)):      <span style="color:#75715e">#encrypt data using single byte xor</span>
+</span></span><span style="display:flex;"><span>            data[i] <span style="color:#f92672">=</span> data[i] <span style="color:#f92672">^</span> <span style="color:#ae81ff">0xFA</span>
+</span></span><span style="display:flex;"><span>        data <span style="color:#f92672">=</span> bytes(data)              <span style="color:#75715e">#convert back to bytes for writing to binary</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        f<span style="color:#f92672">.</span>seek(start)                   <span style="color:#75715e">#return to start address</span>
+</span></span><span style="display:flex;"><span>        f<span style="color:#f92672">.</span>write(data)                   <span style="color:#75715e">#replace data with encrypted version</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> __name__ <span style="color:#f92672">==</span> <span style="color:#e6db74">&#34;__main__&#34;</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> len(sys<span style="color:#f92672">.</span>argv) <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">4</span>:
+</span></span><span style="display:flex;"><span>        print(<span style="color:#e6db74">&#34;Usage: ./crypt [binary] [start address] [stop address]&#34;</span>)
+</span></span><span style="display:flex;"><span>        sys<span style="color:#f92672">.</span>exit(<span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    binary <span style="color:#f92672">=</span> sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">1</span>]                <span style="color:#75715e">#binary file name</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">try</span>:
+</span></span><span style="display:flex;"><span>        start <span style="color:#f92672">=</span> int(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">2</span>])        <span style="color:#75715e">#encryption start address</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">except</span> <span style="color:#a6e22e">ValueError</span>:
+</span></span><span style="display:flex;"><span>        start <span style="color:#f92672">=</span> int(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">2</span>], <span style="color:#ae81ff">16</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">try</span>:
+</span></span><span style="display:flex;"><span>        stop <span style="color:#f92672">=</span> int(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">3</span>])         <span style="color:#75715e">#encryption end address</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">except</span> <span style="color:#a6e22e">ValueError</span>:
+</span></span><span style="display:flex;"><span>        stop <span style="color:#f92672">=</span> int(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">3</span>], <span style="color:#ae81ff">16</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    crypt(binary, start, stop)
+</span></span></code></pre></div><p>The encryption script begins by retrieving the relevant values from the command line invocation.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>binary <span style="color:#f92672">=</span> sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">1</span>]                <span style="color:#75715e">#binary file name</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">try</span>:
+</span></span><span style="display:flex;"><span>    start <span style="color:#f92672">=</span> int(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">2</span>])        <span style="color:#75715e">#encryption start address</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">except</span> <span style="color:#a6e22e">ValueError</span>:
+</span></span><span style="display:flex;"><span>    start <span style="color:#f92672">=</span> int(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">2</span>], <span style="color:#ae81ff">16</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">try</span>:
+</span></span><span style="display:flex;"><span>    stop <span style="color:#f92672">=</span> int(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">3</span>])         <span style="color:#75715e">#encryption end address</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">except</span> <span style="color:#a6e22e">ValueError</span>:
+</span></span><span style="display:flex;"><span>    stop <span style="color:#f92672">=</span> int(sys<span style="color:#f92672">.</span>argv[<span style="color:#ae81ff">3</span>], <span style="color:#ae81ff">16</span>)
+</span></span></code></pre></div><p>This includes the name of the binary to encrypt, the start address of encryption, and the end address of encryption. If any of these values are missing, we will print usage instructions and exit with a non-zero exit code to signify an error occurred. The start address and stop address will then be converted to integers. They can be provided in either base 10 or base 16 format, thanks to the added exception handling.</p>
 <p>Now that we have our values, we can pass them to the encryption function (crypt). The encryption function calculates the length of data to encrypt.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">size <span style="color:#f92672">=</span> stop <span style="color:#f92672">-</span> start                 <span style="color:#75715e">#size of space to be encrypted</span>
-</code></pre></div><p>It then opens the binary to modify it appropriately. Once the binary is open, the file pointer is moved to the start address via seek() and then the data to encrypt is read in. We convert this data to a bytearray object, as bytes are immutable in python.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">with</span> open(binary, <span style="color:#e6db74">&#39;rb+&#39;</span>) <span style="color:#66d9ef">as</span> f:
-    f<span style="color:#f92672">.</span>seek(start)                   <span style="color:#75715e">#move file pointer to start address</span>
-    data <span style="color:#f92672">=</span> bytearray(f<span style="color:#f92672">.</span>read(size))  <span style="color:#75715e">#read in data to be encrypted</span>
-</code></pre></div><p>Now that we have a byte array, we can modify it via our &ldquo;encryption&rdquo; method (single byte xor). We&rsquo;ll use a fixed key of 0xFA in this example.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">for</span> i <span style="color:#f92672">in</span> range(len(data)):      <span style="color:#75715e">#encrypt data using single byte xor</span>
-    data[i] <span style="color:#f92672">=</span> data[i] <span style="color:#f92672">^</span> <span style="color:#ae81ff">0xFA</span>
-</code></pre></div><p>Once encryption is complete, the modified data can be returned to bytes and written back to the binary.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">data <span style="color:#f92672">=</span> bytes(data)              <span style="color:#75715e">#convert back to bytes for writing to binary</span>
-f<span style="color:#f92672">.</span>seek(start)                   <span style="color:#75715e">#return to start address</span>
-f<span style="color:#f92672">.</span>write(data)                   <span style="color:#75715e">#replace data with encrypted version</span>
-</code></pre></div><hr>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>size <span style="color:#f92672">=</span> stop <span style="color:#f92672">-</span> start                 <span style="color:#75715e">#size of space to be encrypted</span>
+</span></span></code></pre></div><p>It then opens the binary to modify it appropriately. Once the binary is open, the file pointer is moved to the start address via seek() and then the data to encrypt is read in. We convert this data to a bytearray object, as bytes are immutable in python.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#66d9ef">with</span> open(binary, <span style="color:#e6db74">&#39;rb+&#39;</span>) <span style="color:#66d9ef">as</span> f:
+</span></span><span style="display:flex;"><span>    f<span style="color:#f92672">.</span>seek(start)                   <span style="color:#75715e">#move file pointer to start address</span>
+</span></span><span style="display:flex;"><span>    data <span style="color:#f92672">=</span> bytearray(f<span style="color:#f92672">.</span>read(size))  <span style="color:#75715e">#read in data to be encrypted</span>
+</span></span></code></pre></div><p>Now that we have a byte array, we can modify it via our &ldquo;encryption&rdquo; method (single byte xor). We&rsquo;ll use a fixed key of 0xFA in this example.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#66d9ef">for</span> i <span style="color:#f92672">in</span> range(len(data)):      <span style="color:#75715e">#encrypt data using single byte xor</span>
+</span></span><span style="display:flex;"><span>    data[i] <span style="color:#f92672">=</span> data[i] <span style="color:#f92672">^</span> <span style="color:#ae81ff">0xFA</span>
+</span></span></code></pre></div><p>Once encryption is complete, the modified data can be returned to bytes and written back to the binary.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>data <span style="color:#f92672">=</span> bytes(data)              <span style="color:#75715e">#convert back to bytes for writing to binary</span>
+</span></span><span style="display:flex;"><span>f<span style="color:#f92672">.</span>seek(start)                   <span style="color:#75715e">#return to start address</span>
+</span></span><span style="display:flex;"><span>f<span style="color:#f92672">.</span>write(data)                   <span style="color:#75715e">#replace data with encrypted version</span>
+</span></span></code></pre></div><hr>
 <h2 id="payload">Payload</h2>
 <p>Next we&rsquo;ll need a basic binary to demonstrate our encryption on:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdio.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e"></span>
-<span style="color:#66d9ef">void</span> <span style="color:#a6e22e">encrypt_me</span>(){
-    puts(<span style="color:#e6db74">&#34;Sneaky function!&#34;</span>);
-}
-
-<span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>()
-{
-    puts(<span style="color:#e6db74">&#34;Main function&#34;</span>);
-    encrypt_me();
-}
-</code></pre></div><p>Compilation and execution can be seen below:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdio.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">encrypt_me</span>(){
+</span></span><span style="display:flex;"><span>    puts(<span style="color:#e6db74">&#34;Sneaky function!&#34;</span>);
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>()
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    puts(<span style="color:#e6db74">&#34;Main function&#34;</span>);
+</span></span><span style="display:flex;"><span>    encrypt_me();
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Compilation and execution can be seen below:</p>
 <p><img src="/images/basic-bin.gif" alt="Compilation GIF"></p>
 <p>Our compilation command:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">gcc -g -no-pie -o main main.c
-</code></pre></div><p>Uses the following flags</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>gcc -g -no-pie -o main main.c
+</span></span></code></pre></div><p>Uses the following flags</p>
 <ul>
 <li><strong>-g</strong> to enable symbols</li>
 <li><strong>-no-pie</strong> to disable position independence</li>
@@ -210,266 +210,266 @@ f<span style="color:#f92672">.</span>write(data)                   <span style="
 <hr>
 <h2 id="analysis">Analysis</h2>
 <p>Let&rsquo;s take a look at the dissasembly of the encrypt_me() function</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ objdump -M intel -D main | grep <span style="color:#e6db74">&#34;&lt;encrypt_me&gt;:&#34;</span> -A <span style="color:#ae81ff">7</span>
-<span style="color:#ae81ff">0000000000401142</span> &lt;encrypt_me&gt;:
-  401142:       <span style="color:#ae81ff">55</span>                      push   rbp
-  401143:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp
-  401146:       <span style="color:#ae81ff">48</span> 8d 3d b7 0e <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xeb7<span style="color:#f92672">]</span>        <span style="color:#75715e"># 402004 &lt;_IO_stdin_used+0x4&gt;</span>
-  40114d:       e8 ee fe ff ff          call   <span style="color:#ae81ff">401040</span> &lt;puts@plt&gt;
-  401152:       <span style="color:#ae81ff">90</span>                      nop
-  401153:       5d                      pop    rbp
-  401154:       c3                      ret
-</code></pre></div><p>The function begins at addres 0x401142 in virtual memory. However, we want to encrypt the function while it resides on disk. This means that we&rsquo;ll need to determine the function&rsquo;s address within the binary.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>rgood@debian:~/Playground/self-decrypt$ objdump -M intel -D main | grep <span style="color:#e6db74">&#34;&lt;encrypt_me&gt;:&#34;</span> -A <span style="color:#ae81ff">7</span>
+</span></span><span style="display:flex;"><span><span style="color:#ae81ff">0000000000401142</span> &lt;encrypt_me&gt;:
+</span></span><span style="display:flex;"><span>  401142:       <span style="color:#ae81ff">55</span>                      push   rbp
+</span></span><span style="display:flex;"><span>  401143:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp
+</span></span><span style="display:flex;"><span>  401146:       <span style="color:#ae81ff">48</span> 8d 3d b7 0e <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xeb7<span style="color:#f92672">]</span>        <span style="color:#75715e"># 402004 &lt;_IO_stdin_used+0x4&gt;</span>
+</span></span><span style="display:flex;"><span>  40114d:       e8 ee fe ff ff          call   <span style="color:#ae81ff">401040</span> &lt;puts@plt&gt;
+</span></span><span style="display:flex;"><span>  401152:       <span style="color:#ae81ff">90</span>                      nop
+</span></span><span style="display:flex;"><span>  401153:       5d                      pop    rbp
+</span></span><span style="display:flex;"><span>  401154:       c3                      ret
+</span></span></code></pre></div><p>The function begins at addres 0x401142 in virtual memory. However, we want to encrypt the function while it resides on disk. This means that we&rsquo;ll need to determine the function&rsquo;s address within the binary.</p>
 <p>We can accomplish this using the readelf utility:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ readelf -SW ./main | grep .text
-  <span style="color:#f92672">[</span>13<span style="color:#f92672">]</span> .text             PROGBITS        <span style="color:#ae81ff">0000000000401060</span> <span style="color:#ae81ff">001060</span> 0001c1 <span style="color:#ae81ff">00</span>  AX  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">16</span>
-</code></pre></div><p>We invoke readelf with the following flags:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>rgood@debian:~/Playground/self-decrypt$ readelf -SW ./main | grep .text
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">[</span>13<span style="color:#f92672">]</span> .text             PROGBITS        <span style="color:#ae81ff">0000000000401060</span> <span style="color:#ae81ff">001060</span> 0001c1 <span style="color:#ae81ff">00</span>  AX  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">16</span>
+</span></span></code></pre></div><p>We invoke readelf with the following flags:</p>
 <ul>
 <li>-S to read the Sections of the binary</li>
 <li>-W to output in wide format for readability</li>
 </ul>
 <p>The .text section of a binary typically contains the executable code. We can see that the .text segment is mapped to address 0x401060 in virtual memory, which is associated with address 0x1060 in on the physical file. By association, we can guess that our function of interest resides from address 0x1142 to 0x1154 (basically just strip off the leading 40).</p>
 <p>Let&rsquo;s verify this using hexedit. If you refer to the previous objdump output, you&rsquo;ll see our function begins with the following bytes: 55 48 89 e5.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">401142:       <span style="color:#ae81ff">55</span>                      push   rbp
-401143:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp
-</code></pre></div><p><img src="/images/hexedit.gif" alt="hexedit GIF"></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>401142:       <span style="color:#ae81ff">55</span>                      push   rbp
+</span></span><span style="display:flex;"><span>401143:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp
+</span></span></code></pre></div><p><img src="/images/hexedit.gif" alt="hexedit GIF"></p>
 <p>Now that we&rsquo;ve verified the address space of our function, let&rsquo;s encrypt it. You&rsquo;ll see our hex values are automatically converted to base 10 (0x1142 -&gt; 4418 ; 0x1154 -&gt; 4436).</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ ./encrypt.py main 0x1142 0x1154
-Encrypting main from address <span style="color:#ae81ff">4418</span> to address <span style="color:#ae81ff">4436</span>
-</code></pre></div><p>Let&rsquo;s take another look at the function</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ objdump -M intel -D main | grep <span style="color:#e6db74">&#34;&lt;encrypt_me&gt;:&#34;</span> -A <span style="color:#ae81ff">7</span>
-<span style="color:#ae81ff">0000000000401142</span> &lt;encrypt_me&gt;:
-  401142:       af                      scas   eax,DWORD PTR es:<span style="color:#f92672">[</span>rdi<span style="color:#f92672">]</span>
-  401143:       b2 <span style="color:#ae81ff">73</span>                   mov    dl,0x73
-  401145:       1f                      <span style="color:#f92672">(</span>bad<span style="color:#f92672">)</span>  
-  401146:       b2 <span style="color:#ae81ff">77</span>                   mov    dl,0x77
-  401148:       c7                      <span style="color:#f92672">(</span>bad<span style="color:#f92672">)</span>  
-  401149:       4d f4                   rex.WRB hlt 
-  40114b:       fa                      cli
-</code></pre></div><p>As expected, it is now unintelligible. If we attempt to execute the binary, it will segfault once it reaches the encrypted function.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>rgood@debian:~/Playground/self-decrypt$ ./encrypt.py main 0x1142 0x1154
+</span></span><span style="display:flex;"><span>Encrypting main from address <span style="color:#ae81ff">4418</span> to address <span style="color:#ae81ff">4436</span>
+</span></span></code></pre></div><p>Let&rsquo;s take another look at the function</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>rgood@debian:~/Playground/self-decrypt$ objdump -M intel -D main | grep <span style="color:#e6db74">&#34;&lt;encrypt_me&gt;:&#34;</span> -A <span style="color:#ae81ff">7</span>
+</span></span><span style="display:flex;"><span><span style="color:#ae81ff">0000000000401142</span> &lt;encrypt_me&gt;:
+</span></span><span style="display:flex;"><span>  401142:       af                      scas   eax,DWORD PTR es:<span style="color:#f92672">[</span>rdi<span style="color:#f92672">]</span>
+</span></span><span style="display:flex;"><span>  401143:       b2 <span style="color:#ae81ff">73</span>                   mov    dl,0x73
+</span></span><span style="display:flex;"><span>  401145:       1f                      <span style="color:#f92672">(</span>bad<span style="color:#f92672">)</span>  
+</span></span><span style="display:flex;"><span>  401146:       b2 <span style="color:#ae81ff">77</span>                   mov    dl,0x77
+</span></span><span style="display:flex;"><span>  401148:       c7                      <span style="color:#f92672">(</span>bad<span style="color:#f92672">)</span>  
+</span></span><span style="display:flex;"><span>  401149:       4d f4                   rex.WRB hlt 
+</span></span><span style="display:flex;"><span>  40114b:       fa                      cli
+</span></span></code></pre></div><p>As expected, it is now unintelligible. If we attempt to execute the binary, it will segfault once it reaches the encrypted function.</p>
 <p><img src="/images/segfault1.gif" alt="segfault GIF"></p>
 <hr>
 <h2 id="decryption">Decryption</h2>
 <p>Now we&rsquo;ll add our decryption logic:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdio.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdint.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e"></span>
-<span style="color:#66d9ef">typedef</span> <span style="color:#66d9ef">int64_t</span> address_t;
-
-<span style="color:#66d9ef">void</span> <span style="color:#a6e22e">encrypt_me</span>(){
-    puts(<span style="color:#e6db74">&#34;Sneaky function!&#34;</span>);
-}
-
-<span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>()
-{
-    <span style="color:#66d9ef">int</span> retval <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-
-    puts(<span style="color:#e6db74">&#34;Main function&#34;</span>);
-
-    <span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>addr <span style="color:#f92672">=</span> encrypt_me; 
-    address_t function_size <span style="color:#f92672">=</span> (address_t)main <span style="color:#f92672">-</span> (address_t)encrypt_me <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>; <span style="color:#75715e">// Calculates distance between encrypt_me() and main()
-</span><span style="color:#75715e"></span>    
-    <span style="color:#75715e">/* Decryption loop */</span>
-    <span style="color:#66d9ef">while</span> (function_size <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>)
-    {
-        <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">=</span> <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">^</span> <span style="color:#ae81ff">0xFA</span>;
-        addr <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>;
-        function_size <span style="color:#f92672">-=</span> <span style="color:#ae81ff">1</span>;
-    }
-    <span style="color:#75715e">/* End Decryption loop */</span>
-    
-    encrypt_me();
-}
-</code></pre></div><p>There&rsquo;s a lot going on here so let&rsquo;s break it down.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdio.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdint.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">typedef</span> <span style="color:#66d9ef">int64_t</span> address_t;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">encrypt_me</span>(){
+</span></span><span style="display:flex;"><span>    puts(<span style="color:#e6db74">&#34;Sneaky function!&#34;</span>);
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>()
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> retval <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    puts(<span style="color:#e6db74">&#34;Main function&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>addr <span style="color:#f92672">=</span> encrypt_me; 
+</span></span><span style="display:flex;"><span>    address_t function_size <span style="color:#f92672">=</span> (address_t)main <span style="color:#f92672">-</span> (address_t)encrypt_me <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>; <span style="color:#75715e">// Calculates distance between encrypt_me() and main()
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">/* Decryption loop */</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (function_size <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">=</span> <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">^</span> <span style="color:#ae81ff">0xFA</span>;
+</span></span><span style="display:flex;"><span>        addr <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>        function_size <span style="color:#f92672">-=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">/* End Decryption loop */</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    encrypt_me();
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>There&rsquo;s a lot going on here so let&rsquo;s break it down.</p>
 <p>First of all we&rsquo;ll create a new type to represent addresses: <strong>address_t</strong>. This will be a 64 bit integer since we&rsquo;re dealing with x86-64 architecture.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#66d9ef">typedef</span> <span style="color:#66d9ef">int64_t</span> address_t;
-</code></pre></div><p>The next new addition is grabbing the address of the encrypt_me() function, and then calculating it&rsquo;s size.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>addr <span style="color:#f92672">=</span> encrypt_me; 
-address_t function_size <span style="color:#f92672">=</span> (address_t)main <span style="color:#f92672">-</span> (address_t)encrypt_me <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>;
-</code></pre></div><p>We&rsquo;re using a void* type for the address of encrypt_me here, as we want to increment it by one byte at a time. If we don&rsquo;t do this and instead use an adress_t here, when we try to increment the address (addr+=1) it will increment by 8 bytes. This is because the size of our address_t is 8 bytes (64 bits), and the compiler is trying to help us out.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">typedef</span> <span style="color:#66d9ef">int64_t</span> address_t;
+</span></span></code></pre></div><p>The next new addition is grabbing the address of the encrypt_me() function, and then calculating it&rsquo;s size.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>addr <span style="color:#f92672">=</span> encrypt_me; 
+</span></span><span style="display:flex;"><span>address_t function_size <span style="color:#f92672">=</span> (address_t)main <span style="color:#f92672">-</span> (address_t)encrypt_me <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>;
+</span></span></code></pre></div><p>We&rsquo;re using a void* type for the address of encrypt_me here, as we want to increment it by one byte at a time. If we don&rsquo;t do this and instead use an adress_t here, when we try to increment the address (addr+=1) it will increment by 8 bytes. This is because the size of our address_t is 8 bytes (64 bits), and the compiler is trying to help us out.</p>
 <p>The size of encrypt_me() can be calculated in this way, as we can see in the objdump output that it resides before main() in memory. The result of this calculation will be (0x401155 - 0x401142 = 0x13 = 19)</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ objdump -M intel -D main | grep <span style="color:#e6db74">&#34;&lt;encrypt_me&gt;:&#34;</span> -A <span style="color:#ae81ff">9</span>                         
-<span style="color:#ae81ff">0000000000401142</span> &lt;encrypt_me&gt;:
-  401142:       <span style="color:#ae81ff">55</span>                      push   rbp
-  401143:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp
-  401146:       <span style="color:#ae81ff">48</span> 8d 3d b7 0e <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xeb7<span style="color:#f92672">]</span>        <span style="color:#75715e"># 402004 &lt;_IO_stdin_used+0x4&gt;                  </span>
-  40114d:       e8 ee fe ff ff          call   <span style="color:#ae81ff">401040</span> &lt;puts@plt&gt;                                                     
-  401152:       <span style="color:#ae81ff">90</span>                      nop
-  401153:       5d                      pop    rbp
-  401154:       c3                      ret
-
-<span style="color:#ae81ff">0000000000401155</span> &lt;main&gt;:
-</code></pre></div><p>Therefore we can find the size of encrypt_me() by calculating the difference between the two, and subtract an additional byte to make the math line up with our encryption function.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>rgood@debian:~/Playground/self-decrypt$ objdump -M intel -D main | grep <span style="color:#e6db74">&#34;&lt;encrypt_me&gt;:&#34;</span> -A <span style="color:#ae81ff">9</span>                         
+</span></span><span style="display:flex;"><span><span style="color:#ae81ff">0000000000401142</span> &lt;encrypt_me&gt;:
+</span></span><span style="display:flex;"><span>  401142:       <span style="color:#ae81ff">55</span>                      push   rbp
+</span></span><span style="display:flex;"><span>  401143:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp
+</span></span><span style="display:flex;"><span>  401146:       <span style="color:#ae81ff">48</span> 8d 3d b7 0e <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xeb7<span style="color:#f92672">]</span>        <span style="color:#75715e"># 402004 &lt;_IO_stdin_used+0x4&gt;                  </span>
+</span></span><span style="display:flex;"><span>  40114d:       e8 ee fe ff ff          call   <span style="color:#ae81ff">401040</span> &lt;puts@plt&gt;                                                     
+</span></span><span style="display:flex;"><span>  401152:       <span style="color:#ae81ff">90</span>                      nop
+</span></span><span style="display:flex;"><span>  401153:       5d                      pop    rbp
+</span></span><span style="display:flex;"><span>  401154:       c3                      ret
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#ae81ff">0000000000401155</span> &lt;main&gt;:
+</span></span></code></pre></div><p>Therefore we can find the size of encrypt_me() by calculating the difference between the two, and subtract an additional byte to make the math line up with our encryption function.</p>
 <p>Lastly, we have our decryption loop.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#66d9ef">while</span> (function_size <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>)
-{
-    <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">=</span> <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">^</span> <span style="color:#ae81ff">0xFA</span>;
-    addr <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>;
-    function_size <span style="color:#f92672">-=</span> <span style="color:#ae81ff">1</span>;
-}
-</code></pre></div><p>This loop will iterate over each byte in the encrypt_me() function (addr += 1) as long as there are still bytes left to encrypt (function_size &gt; 0).</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">while</span> (function_size <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">=</span> <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">^</span> <span style="color:#ae81ff">0xFA</span>;
+</span></span><span style="display:flex;"><span>    addr <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    function_size <span style="color:#f92672">-=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>This loop will iterate over each byte in the encrypt_me() function (addr += 1) as long as there are still bytes left to encrypt (function_size &gt; 0).</p>
 <p>At each iteration, it will decrypt (xor) the instruction residing at the current address (*(int *)addr) with our key (0xFA). We&rsquo;re converting to an (int *) here to allow for this arithmetic, and dereferencing the pointer to alter the actual instruction instead of the address the instruction resides at. We will then take the result and overwrite the formerly encrypted instruction byte.</p>
 <p>Before we continue, we&rsquo;ll need to check where encrypt_me is living in memory now, as it has most likely moved.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ objdump -M intel -D main | grep <span style="color:#e6db74">&#34;&lt;encrypt_me&gt;:&#34;</span> -A <span style="color:#ae81ff">18</span>
-<span style="color:#ae81ff">0000000000401122</span> &lt;encrypt_me&gt;:
-  401122:       <span style="color:#ae81ff">55</span>                      push   rbp
-  401123:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp
-  401126:       <span style="color:#ae81ff">48</span> 8d 3d d7 0e <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xed7<span style="color:#f92672">]</span>        <span style="color:#75715e"># 402004 &lt;_IO_stdin_used+0x4&gt;</span>
-  40112d:       e8 fe fe ff ff          call   <span style="color:#ae81ff">401030</span> &lt;puts@plt&gt;
-  401132:       <span style="color:#ae81ff">90</span>                      nop
-  401133:       5d                      pop    rbp
-  401134:       c3                      ret    
-
-<span style="color:#ae81ff">0000000000401135</span> &lt;main&gt;:
-  401135:       <span style="color:#ae81ff">55</span>                      push   rbp
-  401136:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp
-  401139:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">83</span> ec <span style="color:#ae81ff">20</span>             sub    rsp,0x20
-  40113d:       c7 <span style="color:#ae81ff">45</span> ec <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    mov    DWORD PTR <span style="color:#f92672">[</span>rbp-0x14<span style="color:#f92672">]</span>,0x0
-  401144:       <span style="color:#ae81ff">48</span> 8d 3d ca 0e <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xeca<span style="color:#f92672">]</span>        <span style="color:#75715e"># 402015 &lt;_IO_stdin_used+0x15&gt;</span>
-  40114b:       e8 e0 fe ff ff          call   <span style="color:#ae81ff">401030</span> &lt;puts@plt&gt;
-  401150:       <span style="color:#ae81ff">48</span> 8d <span style="color:#ae81ff">05</span> cb ff ff ff    lea    rax,<span style="color:#f92672">[</span>rip+0xffffffffffffffcb<span style="color:#f92672">]</span>        <span style="color:#75715e"># 401122 &lt;encrypt_me&gt;</span>
-  401157:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> <span style="color:#ae81ff">45</span> f8             mov    QWORD PTR <span style="color:#f92672">[</span>rbp-0x8<span style="color:#f92672">]</span>,rax
-  40115b:       <span style="color:#ae81ff">48</span> 8d <span style="color:#ae81ff">05</span> d3 ff ff ff    lea    rax,<span style="color:#f92672">[</span>rip+0xffffffffffffffd3<span style="color:#f92672">]</span>        <span style="color:#75715e"># 401135 &lt;main&gt;</span>
-</code></pre></div><p>Based on this, we know we&rsquo;ll need to provide a start address of 0x401122 and a stop address of 0x401134 to our encryption python script.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>rgood@debian:~/Playground/self-decrypt$ objdump -M intel -D main | grep <span style="color:#e6db74">&#34;&lt;encrypt_me&gt;:&#34;</span> -A <span style="color:#ae81ff">18</span>
+</span></span><span style="display:flex;"><span><span style="color:#ae81ff">0000000000401122</span> &lt;encrypt_me&gt;:
+</span></span><span style="display:flex;"><span>  401122:       <span style="color:#ae81ff">55</span>                      push   rbp
+</span></span><span style="display:flex;"><span>  401123:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp
+</span></span><span style="display:flex;"><span>  401126:       <span style="color:#ae81ff">48</span> 8d 3d d7 0e <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xed7<span style="color:#f92672">]</span>        <span style="color:#75715e"># 402004 &lt;_IO_stdin_used+0x4&gt;</span>
+</span></span><span style="display:flex;"><span>  40112d:       e8 fe fe ff ff          call   <span style="color:#ae81ff">401030</span> &lt;puts@plt&gt;
+</span></span><span style="display:flex;"><span>  401132:       <span style="color:#ae81ff">90</span>                      nop
+</span></span><span style="display:flex;"><span>  401133:       5d                      pop    rbp
+</span></span><span style="display:flex;"><span>  401134:       c3                      ret    
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#ae81ff">0000000000401135</span> &lt;main&gt;:
+</span></span><span style="display:flex;"><span>  401135:       <span style="color:#ae81ff">55</span>                      push   rbp
+</span></span><span style="display:flex;"><span>  401136:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp
+</span></span><span style="display:flex;"><span>  401139:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">83</span> ec <span style="color:#ae81ff">20</span>             sub    rsp,0x20
+</span></span><span style="display:flex;"><span>  40113d:       c7 <span style="color:#ae81ff">45</span> ec <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    mov    DWORD PTR <span style="color:#f92672">[</span>rbp-0x14<span style="color:#f92672">]</span>,0x0
+</span></span><span style="display:flex;"><span>  401144:       <span style="color:#ae81ff">48</span> 8d 3d ca 0e <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xeca<span style="color:#f92672">]</span>        <span style="color:#75715e"># 402015 &lt;_IO_stdin_used+0x15&gt;</span>
+</span></span><span style="display:flex;"><span>  40114b:       e8 e0 fe ff ff          call   <span style="color:#ae81ff">401030</span> &lt;puts@plt&gt;
+</span></span><span style="display:flex;"><span>  401150:       <span style="color:#ae81ff">48</span> 8d <span style="color:#ae81ff">05</span> cb ff ff ff    lea    rax,<span style="color:#f92672">[</span>rip+0xffffffffffffffcb<span style="color:#f92672">]</span>        <span style="color:#75715e"># 401122 &lt;encrypt_me&gt;</span>
+</span></span><span style="display:flex;"><span>  401157:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> <span style="color:#ae81ff">45</span> f8             mov    QWORD PTR <span style="color:#f92672">[</span>rbp-0x8<span style="color:#f92672">]</span>,rax
+</span></span><span style="display:flex;"><span>  40115b:       <span style="color:#ae81ff">48</span> 8d <span style="color:#ae81ff">05</span> d3 ff ff ff    lea    rax,<span style="color:#f92672">[</span>rip+0xffffffffffffffd3<span style="color:#f92672">]</span>        <span style="color:#75715e"># 401135 &lt;main&gt;</span>
+</span></span></code></pre></div><p>Based on this, we know we&rsquo;ll need to provide a start address of 0x401122 and a stop address of 0x401134 to our encryption python script.</p>
 <p>Alright, let&rsquo;s do this!</p>
 <p><img src="/images/decrypt-fail.gif" alt="Decryption Failure"></p>
 <p>Oh no! It failed. Don&rsquo;t worry, we&rsquo;ll have that fixed up in no time.</p>
 <hr>
 <h2 id="permissions">Permissions</h2>
 <p>As mentioned previously, the code in a binary resides in the .text section, let&rsquo;s take another look at it&hellip;</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ readelf -SW main | grep .text
-<span style="color:#f92672">[</span>13<span style="color:#f92672">]</span> .text             PROGBITS        <span style="color:#ae81ff">0000000000401040</span> <span style="color:#ae81ff">001040</span> 0001d1 <span style="color:#ae81ff">00</span>  AX  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">16</span>
-</code></pre></div><p>If you look near the end of the line, you&rsquo;ll see &ldquo;AX&rdquo;. These letters represent the current permission flags of this section of the binary. This differs from something like the data section, which has permissions &ldquo;WA&rdquo;.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#f92672">[</span>23<span style="color:#f92672">]</span> .data             PROGBITS        <span style="color:#ae81ff">0000000000404020</span> <span style="color:#ae81ff">003020</span> <span style="color:#ae81ff">000010</span> <span style="color:#ae81ff">00</span>  WA  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">8</span>
-</code></pre></div><p>The big difference between the two, is that the .text section is executable (makes sense since this is where the code lives) but not writable, and the .data section is writable but not executable.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>rgood@debian:~/Playground/self-decrypt$ readelf -SW main | grep .text
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>13<span style="color:#f92672">]</span> .text             PROGBITS        <span style="color:#ae81ff">0000000000401040</span> <span style="color:#ae81ff">001040</span> 0001d1 <span style="color:#ae81ff">00</span>  AX  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">16</span>
+</span></span></code></pre></div><p>If you look near the end of the line, you&rsquo;ll see &ldquo;AX&rdquo;. These letters represent the current permission flags of this section of the binary. This differs from something like the data section, which has permissions &ldquo;WA&rdquo;.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#f92672">[</span>23<span style="color:#f92672">]</span> .data             PROGBITS        <span style="color:#ae81ff">0000000000404020</span> <span style="color:#ae81ff">003020</span> <span style="color:#ae81ff">000010</span> <span style="color:#ae81ff">00</span>  WA  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">8</span>
+</span></span></code></pre></div><p>The big difference between the two, is that the .text section is executable (makes sense since this is where the code lives) but not writable, and the .data section is writable but not executable.</p>
 <p>This is why we received a segfault when we attempted to write to the .text section in memory.</p>
 <p>Both of these sections are loaded into something called a <em>segment</em> once the binary is executing. Let&rsquo;s take a look at these segments. We&rsquo;ll use readelf with the -lW flags to see the binary&rsquo;s segments in wide formatting.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ readelf -lW ./main
-
-Elf file type is EXEC <span style="color:#f92672">(</span>Executable file<span style="color:#f92672">)</span>
-Entry point 0x401040
-There are <span style="color:#ae81ff">11</span> program headers, starting at offset <span style="color:#ae81ff">64</span>
-
-Program Headers:
-  Type           Offset   VirtAddr           PhysAddr           FileSiz  MemSiz   Flg Align
-  PHDR           0x000040 0x0000000000400040 0x0000000000400040 0x000268 0x000268 R   0x8
-  INTERP         0x0002a8 0x00000000004002a8 0x00000000004002a8 0x00001c 0x00001c R   0x1
-      <span style="color:#f92672">[</span>Requesting program interpreter: /lib64/ld-linux-x86-64.so.2<span style="color:#f92672">]</span>
-  LOAD           0x000000 0x0000000000400000 0x0000000000400000 0x000438 0x000438 R   0x1000
-  LOAD           0x001000 0x0000000000401000 0x0000000000401000 0x00021d 0x00021d R E 0x1000
-  LOAD           0x002000 0x0000000000402000 0x0000000000402000 0x000188 0x000188 R   0x1000
-  LOAD           0x002e10 0x0000000000403e10 0x0000000000403e10 0x000220 0x000228 RW  0x1000
-  DYNAMIC        0x002e20 0x0000000000403e20 0x0000000000403e20 0x0001d0 0x0001d0 RW  0x8
-  NOTE           0x0002c4 0x00000000004002c4 0x00000000004002c4 0x000044 0x000044 R   0x4
-  GNU_EH_FRAME   0x002024 0x0000000000402024 0x0000000000402024 0x000044 0x000044 R   0x4
-  GNU_STACK      0x000000 0x0000000000000000 0x0000000000000000 0x000000 0x000000 RW  0x10
-  GNU_RELRO      0x002e10 0x0000000000403e10 0x0000000000403e10 0x0001f0 0x0001f0 R   0x1
-
- Section to Segment mapping:
-  Segment Sections...
-   <span style="color:#ae81ff">00</span>     
-   <span style="color:#ae81ff">01</span>     .interp 
-   <span style="color:#ae81ff">02</span>     .interp .note.ABI-tag .note.gnu.build-id .gnu.hash .dynsym .dynstr .gnu.version .gnu.version_r .rela.dyn .rela.plt 
-   <span style="color:#ae81ff">03</span>     .init .plt .text .fini 
-   <span style="color:#ae81ff">04</span>     .rodata .eh_frame_hdr .eh_frame 
-   <span style="color:#ae81ff">05</span>     .init_array .fini_array .dynamic .got .got.plt .data .bss 
-   <span style="color:#ae81ff">06</span>     .dynamic 
-   <span style="color:#ae81ff">07</span>     .note.ABI-tag .note.gnu.build-id 
-   <span style="color:#ae81ff">08</span>     .eh_frame_hdr 
-   <span style="color:#ae81ff">09</span>     
-   <span style="color:#ae81ff">10</span>     .init_array .fini_array .dynamic .got
-</code></pre></div><p>Reading this output, we can see from the Section to Segment mapping that the .text section maps to segment 3, shown below:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">LOAD           0x001000 0x0000000000401000 0x0000000000401000 0x00021d 0x00021d R E 0x1000
-</code></pre></div><p>As expected, this segment has Read and Execute permissions, but no write permissions. Can you see where the .data section is mapped to and the relevant segments permissions?</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>rgood@debian:~/Playground/self-decrypt$ readelf -lW ./main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Elf file type is EXEC <span style="color:#f92672">(</span>Executable file<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>Entry point 0x401040
+</span></span><span style="display:flex;"><span>There are <span style="color:#ae81ff">11</span> program headers, starting at offset <span style="color:#ae81ff">64</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Program Headers:
+</span></span><span style="display:flex;"><span>  Type           Offset   VirtAddr           PhysAddr           FileSiz  MemSiz   Flg Align
+</span></span><span style="display:flex;"><span>  PHDR           0x000040 0x0000000000400040 0x0000000000400040 0x000268 0x000268 R   0x8
+</span></span><span style="display:flex;"><span>  INTERP         0x0002a8 0x00000000004002a8 0x00000000004002a8 0x00001c 0x00001c R   0x1
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">[</span>Requesting program interpreter: /lib64/ld-linux-x86-64.so.2<span style="color:#f92672">]</span>
+</span></span><span style="display:flex;"><span>  LOAD           0x000000 0x0000000000400000 0x0000000000400000 0x000438 0x000438 R   0x1000
+</span></span><span style="display:flex;"><span>  LOAD           0x001000 0x0000000000401000 0x0000000000401000 0x00021d 0x00021d R E 0x1000
+</span></span><span style="display:flex;"><span>  LOAD           0x002000 0x0000000000402000 0x0000000000402000 0x000188 0x000188 R   0x1000
+</span></span><span style="display:flex;"><span>  LOAD           0x002e10 0x0000000000403e10 0x0000000000403e10 0x000220 0x000228 RW  0x1000
+</span></span><span style="display:flex;"><span>  DYNAMIC        0x002e20 0x0000000000403e20 0x0000000000403e20 0x0001d0 0x0001d0 RW  0x8
+</span></span><span style="display:flex;"><span>  NOTE           0x0002c4 0x00000000004002c4 0x00000000004002c4 0x000044 0x000044 R   0x4
+</span></span><span style="display:flex;"><span>  GNU_EH_FRAME   0x002024 0x0000000000402024 0x0000000000402024 0x000044 0x000044 R   0x4
+</span></span><span style="display:flex;"><span>  GNU_STACK      0x000000 0x0000000000000000 0x0000000000000000 0x000000 0x000000 RW  0x10
+</span></span><span style="display:flex;"><span>  GNU_RELRO      0x002e10 0x0000000000403e10 0x0000000000403e10 0x0001f0 0x0001f0 R   0x1
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span> Section to Segment mapping:
+</span></span><span style="display:flex;"><span>  Segment Sections...
+</span></span><span style="display:flex;"><span>   <span style="color:#ae81ff">00</span>     
+</span></span><span style="display:flex;"><span>   <span style="color:#ae81ff">01</span>     .interp 
+</span></span><span style="display:flex;"><span>   <span style="color:#ae81ff">02</span>     .interp .note.ABI-tag .note.gnu.build-id .gnu.hash .dynsym .dynstr .gnu.version .gnu.version_r .rela.dyn .rela.plt 
+</span></span><span style="display:flex;"><span>   <span style="color:#ae81ff">03</span>     .init .plt .text .fini 
+</span></span><span style="display:flex;"><span>   <span style="color:#ae81ff">04</span>     .rodata .eh_frame_hdr .eh_frame 
+</span></span><span style="display:flex;"><span>   <span style="color:#ae81ff">05</span>     .init_array .fini_array .dynamic .got .got.plt .data .bss 
+</span></span><span style="display:flex;"><span>   <span style="color:#ae81ff">06</span>     .dynamic 
+</span></span><span style="display:flex;"><span>   <span style="color:#ae81ff">07</span>     .note.ABI-tag .note.gnu.build-id 
+</span></span><span style="display:flex;"><span>   <span style="color:#ae81ff">08</span>     .eh_frame_hdr 
+</span></span><span style="display:flex;"><span>   <span style="color:#ae81ff">09</span>     
+</span></span><span style="display:flex;"><span>   <span style="color:#ae81ff">10</span>     .init_array .fini_array .dynamic .got
+</span></span></code></pre></div><p>Reading this output, we can see from the Section to Segment mapping that the .text section maps to segment 3, shown below:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>LOAD           0x001000 0x0000000000401000 0x0000000000401000 0x00021d 0x00021d R E 0x1000
+</span></span></code></pre></div><p>As expected, this segment has Read and Execute permissions, but no write permissions. Can you see where the .data section is mapped to and the relevant segments permissions?</p>
 <p>We could modify the binary to make the .text section and segment 03 writable, but defensive tools can easily <a href="https://blog.malwarebytes.com/glossary/signature/#:~:text=In%20computer%20security%2C%20a%20signature,used%20by%20families%20of%20malware.">signaturize</a> this kind of behavior. <a href="https://balsn.tw/ctf_writeup/20210717-googlectf2021/#polymorph">Here&rsquo;s</a> an example of what that would potentially look like.</p>
 <p>Instead, we&rsquo;ll use the mprotect function to change the permissions in memory at execution time.</p>
 <hr>
 <h2 id="final">Final</h2>
 <p>Here&rsquo;s the new version of our self-modifying program:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdio.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/mman.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;errno.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdint.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e"></span>
-<span style="color:#66d9ef">typedef</span> <span style="color:#66d9ef">int64_t</span> address_t;
-
-<span style="color:#66d9ef">void</span> <span style="color:#a6e22e">encrypt_me</span>(){
-    puts(<span style="color:#e6db74">&#34;Sneaky function!&#34;</span>);
-}
-
-<span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>()
-{
-    <span style="color:#66d9ef">int</span> retval <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-
-    puts(<span style="color:#e6db74">&#34;Main function&#34;</span>);
-    retval <span style="color:#f92672">=</span> mprotect((<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)<span style="color:#ae81ff">0x401000</span>, <span style="color:#ae81ff">4096</span>, PROT_READ <span style="color:#f92672">|</span> PROT_WRITE <span style="color:#f92672">|</span> PROT_EXEC);
-    <span style="color:#66d9ef">if</span> (retval <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span>)
-        <span style="color:#66d9ef">return</span> errno;
-
-    <span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>addr <span style="color:#f92672">=</span> encrypt_me;
-
-    address_t function_size <span style="color:#f92672">=</span> (address_t)main <span style="color:#f92672">-</span> (address_t)encrypt_me <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>;
-    <span style="color:#66d9ef">while</span> (function_size <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>)
-    {
-        <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">=</span> <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">^</span> <span style="color:#ae81ff">0xFA</span>;
-        addr<span style="color:#f92672">+=</span><span style="color:#ae81ff">1</span>;
-        function_size <span style="color:#f92672">-=</span> <span style="color:#ae81ff">1</span>;
-    }
-    
-    encrypt_me();
-}
-</code></pre></div><p>The main addition here is the mprotect call</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c">retval <span style="color:#f92672">=</span> mprotect((<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)<span style="color:#ae81ff">0x401000</span>, <span style="color:#ae81ff">4096</span>, PROT_READ <span style="color:#f92672">|</span> PROT_WRITE <span style="color:#f92672">|</span> PROT_EXEC);
-</code></pre></div><p>We&rsquo;re passing in our page aligned memory space (0x401000) and the amount of memory to modify (4096 bytes). These values must both be <a href="https://scoutapm.com/blog/understanding-page-faults-and-memory-swap-in-outs-when-should-you-worry#:~:text=Linux%20allocates%20memory%20to%20processes,represent%204KB%20of%20physical%20memory.">page-aligned</a>. We&rsquo;re then changing the permissions of that memory to allow for read, write, and exec. This will allow us to modify the code, and still execute it once modification is complete.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdio.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/mman.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;errno.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdint.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">typedef</span> <span style="color:#66d9ef">int64_t</span> address_t;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">encrypt_me</span>(){
+</span></span><span style="display:flex;"><span>    puts(<span style="color:#e6db74">&#34;Sneaky function!&#34;</span>);
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>()
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> retval <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    puts(<span style="color:#e6db74">&#34;Main function&#34;</span>);
+</span></span><span style="display:flex;"><span>    retval <span style="color:#f92672">=</span> mprotect((<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)<span style="color:#ae81ff">0x401000</span>, <span style="color:#ae81ff">4096</span>, PROT_READ <span style="color:#f92672">|</span> PROT_WRITE <span style="color:#f92672">|</span> PROT_EXEC);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (retval <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> errno;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>addr <span style="color:#f92672">=</span> encrypt_me;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    address_t function_size <span style="color:#f92672">=</span> (address_t)main <span style="color:#f92672">-</span> (address_t)encrypt_me <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (function_size <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">=</span> <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">^</span> <span style="color:#ae81ff">0xFA</span>;
+</span></span><span style="display:flex;"><span>        addr<span style="color:#f92672">+=</span><span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>        function_size <span style="color:#f92672">-=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    encrypt_me();
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>The main addition here is the mprotect call</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span>retval <span style="color:#f92672">=</span> mprotect((<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)<span style="color:#ae81ff">0x401000</span>, <span style="color:#ae81ff">4096</span>, PROT_READ <span style="color:#f92672">|</span> PROT_WRITE <span style="color:#f92672">|</span> PROT_EXEC);
+</span></span></code></pre></div><p>We&rsquo;re passing in our page aligned memory space (0x401000) and the amount of memory to modify (4096 bytes). These values must both be <a href="https://scoutapm.com/blog/understanding-page-faults-and-memory-swap-in-outs-when-should-you-worry#:~:text=Linux%20allocates%20memory%20to%20processes,represent%204KB%20of%20physical%20memory.">page-aligned</a>. We&rsquo;re then changing the permissions of that memory to allow for read, write, and exec. This will allow us to modify the code, and still execute it once modification is complete.</p>
 <p>A more robust way to implement the alignment is shown below (just 0&rsquo;s out the last 3 nibbles of the address):</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c">address_t page_aligned_addr <span style="color:#f92672">=</span> (address_t)encrypt_me <span style="color:#f92672">&amp;</span> <span style="color:#ae81ff">0xFFF000</span>;
-</code></pre></div><p>Which results in the following final version of our code:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdio.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/mman.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;errno.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdint.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e"></span>
-<span style="color:#66d9ef">typedef</span> <span style="color:#66d9ef">int64_t</span> address_t;
-
-<span style="color:#66d9ef">void</span> <span style="color:#a6e22e">encrypt_me</span>(){
-    puts(<span style="color:#e6db74">&#34;Sneaky function!&#34;</span>);
-}
-
-<span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>()
-{
-    <span style="color:#66d9ef">int</span> retval <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-
-    puts(<span style="color:#e6db74">&#34;Main function&#34;</span>);
-    address_t page_aligned_addr <span style="color:#f92672">=</span> (address_t)encrypt_me <span style="color:#f92672">&amp;</span> <span style="color:#ae81ff">0xFFF000</span>;
-    retval <span style="color:#f92672">=</span> mprotect((<span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>)page_aligned_addr, <span style="color:#ae81ff">4096</span>, PROT_READ <span style="color:#f92672">|</span> PROT_WRITE <span style="color:#f92672">|</span> PROT_EXEC);
-    <span style="color:#66d9ef">if</span> (retval <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span>)
-        <span style="color:#66d9ef">return</span> errno;
-
-    <span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>addr <span style="color:#f92672">=</span> encrypt_me;
-
-    address_t function_size <span style="color:#f92672">=</span> (address_t)main <span style="color:#f92672">-</span> (address_t)encrypt_me <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>;
-    <span style="color:#66d9ef">while</span> (function_size <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>)
-    {
-        <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">=</span> <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">^</span> <span style="color:#ae81ff">0xFA</span>;
-        addr<span style="color:#f92672">+=</span><span style="color:#ae81ff">1</span>;
-        function_size <span style="color:#f92672">-=</span> <span style="color:#ae81ff">1</span>;
-    }
-    
-    encrypt_me();
-}
-</code></pre></div><p>Let&rsquo;s give this another shot. First we&rsquo;ll compile.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ gcc -g -no-pie -o main main.c
-</code></pre></div><p>Then we&rsquo;ll check our addresses.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Playground/self-decrypt$ objdump -M intel -D main | grep <span style="color:#e6db74">&#34;&lt;encrypt_me&gt;:&#34;</span> -A <span style="color:#ae81ff">7</span>
-<span style="color:#ae81ff">0000000000401142</span> &lt;encrypt_me&gt;:
-  401142:       <span style="color:#ae81ff">55</span>                      push   rbp
-  401143:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp
-  401146:       <span style="color:#ae81ff">48</span> 8d 3d b7 0e <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xeb7<span style="color:#f92672">]</span>        <span style="color:#75715e"># 402004 &lt;_IO_stdin_used+0x4&gt;</span>
-  40114d:       e8 ee fe ff ff          call   <span style="color:#ae81ff">401040</span> &lt;puts@plt&gt;
-  401152:       <span style="color:#ae81ff">90</span>                      nop
-  401153:       5d                      pop    rbp
-  401154:       c3                      ret    
-</code></pre></div><p>And finally, we&rsquo;ll encrypt and run.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span>address_t page_aligned_addr <span style="color:#f92672">=</span> (address_t)encrypt_me <span style="color:#f92672">&amp;</span> <span style="color:#ae81ff">0xFFF000</span>;
+</span></span></code></pre></div><p>Which results in the following final version of our code:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdio.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/mman.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;errno.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdint.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">typedef</span> <span style="color:#66d9ef">int64_t</span> address_t;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">encrypt_me</span>(){
+</span></span><span style="display:flex;"><span>    puts(<span style="color:#e6db74">&#34;Sneaky function!&#34;</span>);
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>()
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> retval <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    puts(<span style="color:#e6db74">&#34;Main function&#34;</span>);
+</span></span><span style="display:flex;"><span>    address_t page_aligned_addr <span style="color:#f92672">=</span> (address_t)encrypt_me <span style="color:#f92672">&amp;</span> <span style="color:#ae81ff">0xFFF000</span>;
+</span></span><span style="display:flex;"><span>    retval <span style="color:#f92672">=</span> mprotect((<span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>)page_aligned_addr, <span style="color:#ae81ff">4096</span>, PROT_READ <span style="color:#f92672">|</span> PROT_WRITE <span style="color:#f92672">|</span> PROT_EXEC);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (retval <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> errno;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>addr <span style="color:#f92672">=</span> encrypt_me;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    address_t function_size <span style="color:#f92672">=</span> (address_t)main <span style="color:#f92672">-</span> (address_t)encrypt_me <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (function_size <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">=</span> <span style="color:#f92672">*</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>)addr <span style="color:#f92672">^</span> <span style="color:#ae81ff">0xFA</span>;
+</span></span><span style="display:flex;"><span>        addr<span style="color:#f92672">+=</span><span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>        function_size <span style="color:#f92672">-=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    encrypt_me();
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Let&rsquo;s give this another shot. First we&rsquo;ll compile.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>rgood@debian:~/Playground/self-decrypt$ gcc -g -no-pie -o main main.c
+</span></span></code></pre></div><p>Then we&rsquo;ll check our addresses.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>rgood@debian:~/Playground/self-decrypt$ objdump -M intel -D main | grep <span style="color:#e6db74">&#34;&lt;encrypt_me&gt;:&#34;</span> -A <span style="color:#ae81ff">7</span>
+</span></span><span style="display:flex;"><span><span style="color:#ae81ff">0000000000401142</span> &lt;encrypt_me&gt;:
+</span></span><span style="display:flex;"><span>  401142:       <span style="color:#ae81ff">55</span>                      push   rbp
+</span></span><span style="display:flex;"><span>  401143:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp
+</span></span><span style="display:flex;"><span>  401146:       <span style="color:#ae81ff">48</span> 8d 3d b7 0e <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xeb7<span style="color:#f92672">]</span>        <span style="color:#75715e"># 402004 &lt;_IO_stdin_used+0x4&gt;</span>
+</span></span><span style="display:flex;"><span>  40114d:       e8 ee fe ff ff          call   <span style="color:#ae81ff">401040</span> &lt;puts@plt&gt;
+</span></span><span style="display:flex;"><span>  401152:       <span style="color:#ae81ff">90</span>                      nop
+</span></span><span style="display:flex;"><span>  401153:       5d                      pop    rbp
+</span></span><span style="display:flex;"><span>  401154:       c3                      ret    
+</span></span></code></pre></div><p>And finally, we&rsquo;ll encrypt and run.</p>
 <p><img src="/images/decrypt-success.gif" alt="Decrypt Success"></p>
 <p>Thanks for making it this far! I hope this was educational. I appreciate any feedback and/or suggestions for follow on posts.</p>
 
@@ -477,7 +477,7 @@ Program Headers:
     <div class="post-footer">
       <div id="disqus_thread"></div>
 <script type="application/javascript">
-    var disqus_config = function () {
+    window.disqus_config = function () {
     
     
     

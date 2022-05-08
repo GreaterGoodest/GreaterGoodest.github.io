@@ -4,7 +4,7 @@
     <title>ELF Science Part 3 // Goodest Blog</title>
     <link rel="shortcut icon" href="/favicon.ico" />
     <meta charset="utf-8" />
-    <meta name="generator" content="Hugo 0.89.2" />
+    <meta name="generator" content="Hugo 0.96.0" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="author" content="Ryan Good" />
     <meta name="description" content="" />
@@ -15,12 +15,12 @@
 <meta name="twitter:title" content="ELF Science Part 3"/>
 <meta name="twitter:description" content="Introduction This post is part of a three part series (so far)
  Part 1 Part 2  As usual, a regularly updated version of the code base associated with this series can be found on my github.
-In the last edition of ELF Science, we defeated our encryption methodology by running the binary in a debugger, setting a breakpoint after self-decryption is complete, and dumping the decrypted memory. We then re-wrote the binary using these decrypted instructions, and NOP&rsquo;d out the xor encryption method."/>
+In the last ELF Science post, we defeated our encryption methodology by running the binary in a debugger, setting a breakpoint after self-decryption is complete, and dumping the decrypted memory. We then re-wrote the binary using these decrypted instructions, and NOP&rsquo;d out the xor encryption method."/>
 
     <meta property="og:title" content="ELF Science Part 3" />
 <meta property="og:description" content="Introduction This post is part of a three part series (so far)
  Part 1 Part 2  As usual, a regularly updated version of the code base associated with this series can be found on my github.
-In the last edition of ELF Science, we defeated our encryption methodology by running the binary in a debugger, setting a breakpoint after self-decryption is complete, and dumping the decrypted memory. We then re-wrote the binary using these decrypted instructions, and NOP&rsquo;d out the xor encryption method." />
+In the last ELF Science post, we defeated our encryption methodology by running the binary in a debugger, setting a breakpoint after self-decryption is complete, and dumping the decrypted memory. We then re-wrote the binary using these decrypted instructions, and NOP&rsquo;d out the xor encryption method." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://GreaterGoodest.github.io/post/elf_science_p3/" /><meta property="article:section" content="post" />
 <meta property="article:published_time" content="2022-01-07T20:57:52-06:00" />
@@ -100,92 +100,92 @@ In the last edition of ELF Science, we defeated our encryption methodology by ru
 <li><a href="/post/elf_science_p2/">Part 2</a></li>
 </ul>
 <p>As usual, a regularly updated version of the code base associated with this series can be found on my <a href="https://github.com/GreaterGoodest/elf-magic">github</a>.</p>
-<p>In the last edition of ELF Science, we defeated our encryption methodology by running the binary in a debugger, setting a breakpoint after self-decryption is complete, and dumping the decrypted memory. We then re-wrote the binary using these decrypted instructions, and NOP&rsquo;d out the xor encryption method.</p>
+<p>In the last ELF Science post, we defeated our encryption methodology by running the binary in a debugger, setting a breakpoint after self-decryption is complete, and dumping the decrypted memory. We then re-wrote the binary using these decrypted instructions, and NOP&rsquo;d out the xor encryption method.</p>
 <p>In this edition, we&rsquo;ll return to our scheming ways and discuss additional ways to frustrate would be reversers.</p>
 <p>Firstly, we&rsquo;ll check to see if we&rsquo;re are being run in a debugger. If that&rsquo;s the case, we&rsquo;ll immediately exit. After that, we&rsquo;ll check if we are running in a virtualized environment (VMware, etc.). Virtualized environments are commonly used to detonate malware, as they reduce the risk to the host system. Of course, you wouldn&rsquo;t want to perform this check if you&rsquo;re attacking an EC2 instance or something similar. If we detect that the host system is virtualized, this will also lead to early termination. Quite devious.</p>
 <p>Of course, once we&rsquo;ve implemented these new features we will also explore how easily they can be defeated.</p>
 <h2 id="detecting-debugger">Detecting Debugger</h2>
 <p>One neat thing we can do during execution is access our own process information located within /proc/self/status. This file can give us useful information such as our Pid and Parent Pid. We can also use the TracerPid value to determine if something is attempting to debug us.</p>
 <p>For example, let&rsquo;s look at the status file of a random process (chrome-sandbox):</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Projects/blog.dev.repo$ sudo cat /proc/43338/status                                                    
-Name:   chrome-sandbox                                                                                                
-Umask:  <span style="color:#ae81ff">0022</span>                                                                                                          
-State:  S <span style="color:#f92672">(</span>sleeping<span style="color:#f92672">)</span>                                                                                                  
-Tgid:   <span style="color:#ae81ff">43338</span>                                                                                                         
-Ngid:   <span style="color:#ae81ff">0</span>                                                                                                             
-Pid:    <span style="color:#ae81ff">43338</span>                                                                                                         
-PPid:   <span style="color:#ae81ff">43323</span>                                                                                                         
-TracerPid:      <span style="color:#ae81ff">0</span>
-</code></pre></div><p>Here we can see that the TracerPid is 0, as there is no debugger attached to the process. Now let&rsquo;s take a look a process i&rsquo;ve attached gdb to:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Projects/blog.dev.repo$ sudo cat /proc/43312/status                                                    
-Name:   a.out                                                                                                         
-Umask:  <span style="color:#ae81ff">0022</span>                                                                                                          
-State:  t <span style="color:#f92672">(</span>tracing stop<span style="color:#f92672">)</span>                                                                                              
-Tgid:   <span style="color:#ae81ff">43312</span>                                                                                                         
-Ngid:   <span style="color:#ae81ff">0</span>                                                                                                             
-Pid:    <span style="color:#ae81ff">43312</span>                                                                                                         
-PPid:   <span style="color:#ae81ff">43309</span>                                                                                                         
-TracerPid:      <span style="color:#ae81ff">43309</span>
-</code></pre></div><p>Here we can see that the TracerPid has a non-zero value. If we take a look at this pid, we can see that it&rsquo;s our gdb process pid:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">rgood@debian:~/Projects/blog.dev.repo$ sudo cat /proc/43309/status                                                    
-Name:   gdb
-</code></pre></div><p>Using this knowledge, we will add a check into our binary to determine if a debugger has attached to us.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#66d9ef">uint32_t</span> <span style="color:#a6e22e">check_tracer</span>(){
-    <span style="color:#66d9ef">int32_t</span> retval <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-    <span style="color:#66d9ef">int32_t</span> fd <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-
-    fd <span style="color:#f92672">=</span> open(<span style="color:#e6db74">&#34;/proc/self/status&#34;</span>, O_RDONLY);
-    <span style="color:#66d9ef">if</span>(fd <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
-    {
-        perror(<span style="color:#e6db74">&#34;open /proc/self/status&#34;</span>);
-        <span style="color:#66d9ef">return</span> errno;
-    }
-
-    <span style="color:#75715e">// Read our process information into memory
-</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">char</span> buff[<span style="color:#ae81ff">1028</span>];
-    retval <span style="color:#f92672">=</span> read(fd, buff, <span style="color:#66d9ef">sizeof</span>(buff));
-    <span style="color:#66d9ef">if</span> (retval <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
-    {
-        perror(<span style="color:#e6db74">&#34;read /proc/self/status&#34;</span>);
-        <span style="color:#66d9ef">return</span> errno;
-    }
-
-    <span style="color:#75715e">// Iterate until TracerPid line found
-</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>line <span style="color:#f92672">=</span> NULL;
-    <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>key <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;TracerPid&#34;</span>;
-    line <span style="color:#f92672">=</span> strtok(buff, <span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
-    <span style="color:#66d9ef">while</span> (strncmp(line, key, <span style="color:#66d9ef">sizeof</span>(key)))
-    {
-        line <span style="color:#f92672">=</span> strtok(NULL, <span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
-    }
-
-    <span style="color:#75715e">// Get TracerPid value from line
-</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>pid_str <span style="color:#f92672">=</span> NULL;
-    pid_str <span style="color:#f92672">=</span> strtok(line, <span style="color:#e6db74">&#34;:&#34;</span>);
-    pid_str <span style="color:#f92672">=</span> strtok(NULL, <span style="color:#e6db74">&#34;&#34;</span>);
-    <span style="color:#66d9ef">int</span> pid <span style="color:#f92672">=</span> strtol(pid_str, NULL, <span style="color:#ae81ff">10</span>);
-
-    <span style="color:#75715e">// Check if debugger is attached
-</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">if</span> (pid <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
-    {
-        puts(<span style="color:#e6db74">&#34;Spy Discovered!&#34;</span>);
-        exit(<span style="color:#ae81ff">0</span>);
-    }
-
-    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
-}
-
-<span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>()
-{
-    <span style="color:#66d9ef">int</span> retval <span style="color:#f92672">=</span> check_tracer();    
-    <span style="color:#66d9ef">if</span> (retval <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
-    {
-        puts(<span style="color:#e6db74">&#34;check tracer failed&#34;</span>);
-        <span style="color:#66d9ef">return</span> retval;
-    }
-    puts(<span style="color:#e6db74">&#34;No Spy Found...&#34;</span>);
-}
-</code></pre></div><p>Let&rsquo;s see what happens now when we run the binary normally, and when we run it using the debugger.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>rgood@debian:~/Projects/blog.dev.repo$ sudo cat /proc/43338/status                                                    
+</span></span><span style="display:flex;"><span>Name:   chrome-sandbox                                                                                                
+</span></span><span style="display:flex;"><span>Umask:  <span style="color:#ae81ff">0022</span>                                                                                                          
+</span></span><span style="display:flex;"><span>State:  S <span style="color:#f92672">(</span>sleeping<span style="color:#f92672">)</span>                                                                                                  
+</span></span><span style="display:flex;"><span>Tgid:   <span style="color:#ae81ff">43338</span>                                                                                                         
+</span></span><span style="display:flex;"><span>Ngid:   <span style="color:#ae81ff">0</span>                                                                                                             
+</span></span><span style="display:flex;"><span>Pid:    <span style="color:#ae81ff">43338</span>                                                                                                         
+</span></span><span style="display:flex;"><span>PPid:   <span style="color:#ae81ff">43323</span>                                                                                                         
+</span></span><span style="display:flex;"><span>TracerPid:      <span style="color:#ae81ff">0</span>
+</span></span></code></pre></div><p>Here we can see that the TracerPid is 0, as there is no debugger attached to the process. Now let&rsquo;s take a look a process i&rsquo;ve attached gdb to:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>rgood@debian:~/Projects/blog.dev.repo$ sudo cat /proc/43312/status                                                    
+</span></span><span style="display:flex;"><span>Name:   a.out                                                                                                         
+</span></span><span style="display:flex;"><span>Umask:  <span style="color:#ae81ff">0022</span>                                                                                                          
+</span></span><span style="display:flex;"><span>State:  t <span style="color:#f92672">(</span>tracing stop<span style="color:#f92672">)</span>                                                                                              
+</span></span><span style="display:flex;"><span>Tgid:   <span style="color:#ae81ff">43312</span>                                                                                                         
+</span></span><span style="display:flex;"><span>Ngid:   <span style="color:#ae81ff">0</span>                                                                                                             
+</span></span><span style="display:flex;"><span>Pid:    <span style="color:#ae81ff">43312</span>                                                                                                         
+</span></span><span style="display:flex;"><span>PPid:   <span style="color:#ae81ff">43309</span>                                                                                                         
+</span></span><span style="display:flex;"><span>TracerPid:      <span style="color:#ae81ff">43309</span>
+</span></span></code></pre></div><p>Here we can see that the TracerPid has a non-zero value. If we take a look at this pid, we can see that it&rsquo;s our gdb process pid:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>rgood@debian:~/Projects/blog.dev.repo$ sudo cat /proc/43309/status                                                    
+</span></span><span style="display:flex;"><span>Name:   gdb
+</span></span></code></pre></div><p>Using this knowledge, we will add a check into our binary to determine if a debugger has attached to us.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">uint32_t</span> <span style="color:#a6e22e">check_tracer</span>(){
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int32_t</span> retval <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int32_t</span> fd <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    fd <span style="color:#f92672">=</span> open(<span style="color:#e6db74">&#34;/proc/self/status&#34;</span>, O_RDONLY);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span>(fd <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;open /proc/self/status&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> errno;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Read our process information into memory
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">char</span> buff[<span style="color:#ae81ff">1028</span>];
+</span></span><span style="display:flex;"><span>    retval <span style="color:#f92672">=</span> read(fd, buff, <span style="color:#66d9ef">sizeof</span>(buff));
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (retval <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;read /proc/self/status&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> errno;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Iterate until TracerPid line found
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>line <span style="color:#f92672">=</span> NULL;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>key <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;TracerPid&#34;</span>;
+</span></span><span style="display:flex;"><span>    line <span style="color:#f92672">=</span> strtok(buff, <span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (strncmp(line, key, <span style="color:#66d9ef">sizeof</span>(key)))
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        line <span style="color:#f92672">=</span> strtok(NULL, <span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Get TracerPid value from line
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>pid_str <span style="color:#f92672">=</span> NULL;
+</span></span><span style="display:flex;"><span>    pid_str <span style="color:#f92672">=</span> strtok(line, <span style="color:#e6db74">&#34;:&#34;</span>);
+</span></span><span style="display:flex;"><span>    pid_str <span style="color:#f92672">=</span> strtok(NULL, <span style="color:#e6db74">&#34;&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> pid <span style="color:#f92672">=</span> strtol(pid_str, NULL, <span style="color:#ae81ff">10</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Check if debugger is attached
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">if</span> (pid <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        puts(<span style="color:#e6db74">&#34;Spy Discovered!&#34;</span>);
+</span></span><span style="display:flex;"><span>        exit(<span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>()
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> retval <span style="color:#f92672">=</span> check_tracer();    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (retval <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        puts(<span style="color:#e6db74">&#34;check tracer failed&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> retval;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    puts(<span style="color:#e6db74">&#34;No Spy Found...&#34;</span>);
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Let&rsquo;s see what happens now when we run the binary normally, and when we run it using the debugger.</p>
 <p><img src="/images/Catch-Debug.gif" alt="Catch Debugger"></p>
 <p>As you can see, when we run the binary normally we see the &ldquo;No Spy Found&hellip;&rdquo; message, but when it is executed using GDB, we see &ldquo;Spy Discovered&hellip;&rdquo;. This demonstrates that we can detect dynamic analysis attempts.</p>
 <h2 id="detecting-virtualization">Detecting Virtualization</h2>
@@ -193,203 +193,203 @@ Name:   gdb
 <p>The method we&rsquo;ll use here only works on x86 architecture machines, and even then isn&rsquo;t 100% reliable. But it appears to work often enough to be worth implementing.</p>
 <p>We can learn more about the system we are running on by looking at /proc/cpuinfo. This contains information on the system CPU, including a variety of informational flags. One of these flags is &ldquo;hypervisor&rdquo;. If this flag is present, then we are running on a virtualized instance.</p>
 <p>Let&rsquo;s add in another check to our binary to determine if this flag is present.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#66d9ef">int32_t</span> <span style="color:#a6e22e">virtualization_check</span>()
-{
-    <span style="color:#66d9ef">int32_t</span> retval <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-    <span style="color:#66d9ef">int32_t</span> fd <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-
-    <span style="color:#75715e">//open cpuinfo file for analysis
-</span><span style="color:#75715e"></span>    fd <span style="color:#f92672">=</span> open(<span style="color:#e6db74">&#34;/proc/cpuinfo&#34;</span>, O_RDONLY);
-    <span style="color:#66d9ef">if</span>(fd <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
-    {
-        perror(<span style="color:#e6db74">&#34;open /proc/cpuinfo&#34;</span>);
-        <span style="color:#66d9ef">return</span> errno;
-    }
-
-    <span style="color:#75715e">// read in contents of /proc/cpuinfo
-</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">char</span> buff[<span style="color:#ae81ff">1028</span>];
-    retval <span style="color:#f92672">=</span> read(fd, buff, <span style="color:#66d9ef">sizeof</span>(buff));
-    <span style="color:#66d9ef">if</span> (retval <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
-    {
-        perror(<span style="color:#e6db74">&#34;read /proc/cpuinfo&#34;</span>);
-        <span style="color:#66d9ef">return</span> errno;
-    }    
-
-    <span style="color:#75715e">// check if hypervisor flag is set
-</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>hyper_string <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;hypervisor&#34;</span>;    
-    <span style="color:#66d9ef">if</span> (strstr(buff, hyper_string))
-    {
-        puts(<span style="color:#e6db74">&#34;We&#39;re virtualized!&#34;</span>);
-        exit(<span style="color:#ae81ff">0</span>);
-    }
-    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
-}
-</code></pre></div><p>It goes without saying that you would not want to implement this technique if the target was a virtualized machine, such as an EC2 instance. I suppose a positive side effect of running your infrastructure in the cloud is you don&rsquo;t have to worry about malware that does this kind of check.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">int32_t</span> <span style="color:#a6e22e">virtualization_check</span>()
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int32_t</span> retval <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int32_t</span> fd <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">//open cpuinfo file for analysis
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    fd <span style="color:#f92672">=</span> open(<span style="color:#e6db74">&#34;/proc/cpuinfo&#34;</span>, O_RDONLY);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span>(fd <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;open /proc/cpuinfo&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> errno;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// read in contents of /proc/cpuinfo
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">char</span> buff[<span style="color:#ae81ff">1028</span>];
+</span></span><span style="display:flex;"><span>    retval <span style="color:#f92672">=</span> read(fd, buff, <span style="color:#66d9ef">sizeof</span>(buff));
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (retval <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;read /proc/cpuinfo&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> errno;
+</span></span><span style="display:flex;"><span>    }    
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// check if hypervisor flag is set
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>hyper_string <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;hypervisor&#34;</span>;    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (strstr(buff, hyper_string))
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        puts(<span style="color:#e6db74">&#34;We&#39;re virtualized!&#34;</span>);
+</span></span><span style="display:flex;"><span>        exit(<span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>It goes without saying that you would not want to implement this technique if the target was a virtualized machine, such as an EC2 instance. I suppose a positive side effect of running your infrastructure in the cloud is you don&rsquo;t have to worry about malware that does this kind of check.</p>
 <p>Here&rsquo;s our final program:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/mman.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdlib.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;string.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;fcntl.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;unistd.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdbool.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdint.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;errno.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdio.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e"></span>
-<span style="color:#66d9ef">uint32_t</span> <span style="color:#a6e22e">check_tracer</span>(){
-    <span style="color:#66d9ef">int32_t</span> retval <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-    <span style="color:#66d9ef">int32_t</span> fd <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-
-    fd <span style="color:#f92672">=</span> open(<span style="color:#e6db74">&#34;/proc/self/status&#34;</span>, O_RDONLY);
-    <span style="color:#66d9ef">if</span>(fd <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
-    {
-        perror(<span style="color:#e6db74">&#34;open /proc/self/status&#34;</span>);
-        <span style="color:#66d9ef">return</span> errno;
-    }
-
-    <span style="color:#66d9ef">char</span> buff[<span style="color:#ae81ff">1028</span>];
-    retval <span style="color:#f92672">=</span> read(fd, buff, <span style="color:#66d9ef">sizeof</span>(buff));
-    <span style="color:#66d9ef">if</span> (retval <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
-    {
-        perror(<span style="color:#e6db74">&#34;read /proc/self/status&#34;</span>);
-        <span style="color:#66d9ef">return</span> errno;
-    }
-
-    <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>line <span style="color:#f92672">=</span> NULL;
-    <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>key <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;TracerPid&#34;</span>;
-    line <span style="color:#f92672">=</span> strtok(buff, <span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
-    <span style="color:#66d9ef">while</span> (strncmp(line, key, <span style="color:#66d9ef">sizeof</span>(key)))
-    {
-        line <span style="color:#f92672">=</span> strtok(NULL, <span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
-    }
-
-    <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>pid_str <span style="color:#f92672">=</span> NULL;
-    pid_str <span style="color:#f92672">=</span> strtok(line, <span style="color:#e6db74">&#34;:&#34;</span>);
-    pid_str <span style="color:#f92672">=</span> strtok(NULL, <span style="color:#e6db74">&#34;&#34;</span>);
-
-    <span style="color:#66d9ef">int</span> pid <span style="color:#f92672">=</span> strtol(pid_str, NULL, <span style="color:#ae81ff">10</span>);
-
-    <span style="color:#66d9ef">if</span> (pid <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
-    {
-        puts(<span style="color:#e6db74">&#34;Spy Discovered!&#34;</span>);
-        exit(<span style="color:#ae81ff">0</span>);
-    }
-
-    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
-}
-
-<span style="color:#66d9ef">int32_t</span> <span style="color:#a6e22e">virtualization_check</span>()
-{
-    <span style="color:#66d9ef">int32_t</span> retval <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-    <span style="color:#66d9ef">int32_t</span> fd <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-
-    fd <span style="color:#f92672">=</span> open(<span style="color:#e6db74">&#34;/proc/cpuinfo&#34;</span>, O_RDONLY);
-    <span style="color:#66d9ef">if</span>(fd <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
-    {
-        perror(<span style="color:#e6db74">&#34;open /proc/cpuinfo&#34;</span>);
-        <span style="color:#66d9ef">return</span> errno;
-    }
-
-    <span style="color:#66d9ef">char</span> buff[<span style="color:#ae81ff">1028</span>];
-    retval <span style="color:#f92672">=</span> read(fd, buff, <span style="color:#66d9ef">sizeof</span>(buff));
-    <span style="color:#66d9ef">if</span> (retval <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
-    {
-        perror(<span style="color:#e6db74">&#34;read /proc/cpuinfo&#34;</span>);
-        <span style="color:#66d9ef">return</span> errno;
-    }    
-
-    <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>hyper_string <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;hypervisor&#34;</span>;    
-    <span style="color:#66d9ef">if</span> (strstr(buff, hyper_string))
-    {
-        puts(<span style="color:#e6db74">&#34;We&#39;re virtualized!&#34;</span>);
-        exit(<span style="color:#ae81ff">0</span>);
-    }
-    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
-}
-
-<span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>()
-{
-    <span style="color:#66d9ef">int</span> retval <span style="color:#f92672">=</span> check_tracer();    
-    <span style="color:#66d9ef">if</span> (retval <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
-    {
-        puts(<span style="color:#e6db74">&#34;check tracer failed&#34;</span>);
-        <span style="color:#66d9ef">return</span> retval;
-    }
-
-    retval <span style="color:#f92672">=</span> virtualization_check();
-    <span style="color:#66d9ef">if</span> (retval <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
-    {
-        puts(<span style="color:#e6db74">&#34;virtualization check failed&#34;</span>);
-        <span style="color:#66d9ef">return</span> retval;
-    }
-
-    puts(<span style="color:#e6db74">&#34;No Spy Found...&#34;</span>);
-}
-</code></pre></div><h2 id="anti-anti-re">Anti-Anti-RE</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/mman.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdlib.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;string.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;fcntl.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;unistd.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdbool.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdint.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;errno.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdio.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">uint32_t</span> <span style="color:#a6e22e">check_tracer</span>(){
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int32_t</span> retval <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int32_t</span> fd <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    fd <span style="color:#f92672">=</span> open(<span style="color:#e6db74">&#34;/proc/self/status&#34;</span>, O_RDONLY);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span>(fd <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;open /proc/self/status&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> errno;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> buff[<span style="color:#ae81ff">1028</span>];
+</span></span><span style="display:flex;"><span>    retval <span style="color:#f92672">=</span> read(fd, buff, <span style="color:#66d9ef">sizeof</span>(buff));
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (retval <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;read /proc/self/status&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> errno;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>line <span style="color:#f92672">=</span> NULL;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>key <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;TracerPid&#34;</span>;
+</span></span><span style="display:flex;"><span>    line <span style="color:#f92672">=</span> strtok(buff, <span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (strncmp(line, key, <span style="color:#66d9ef">sizeof</span>(key)))
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        line <span style="color:#f92672">=</span> strtok(NULL, <span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>pid_str <span style="color:#f92672">=</span> NULL;
+</span></span><span style="display:flex;"><span>    pid_str <span style="color:#f92672">=</span> strtok(line, <span style="color:#e6db74">&#34;:&#34;</span>);
+</span></span><span style="display:flex;"><span>    pid_str <span style="color:#f92672">=</span> strtok(NULL, <span style="color:#e6db74">&#34;&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> pid <span style="color:#f92672">=</span> strtol(pid_str, NULL, <span style="color:#ae81ff">10</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (pid <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        puts(<span style="color:#e6db74">&#34;Spy Discovered!&#34;</span>);
+</span></span><span style="display:flex;"><span>        exit(<span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int32_t</span> <span style="color:#a6e22e">virtualization_check</span>()
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int32_t</span> retval <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int32_t</span> fd <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    fd <span style="color:#f92672">=</span> open(<span style="color:#e6db74">&#34;/proc/cpuinfo&#34;</span>, O_RDONLY);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span>(fd <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;open /proc/cpuinfo&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> errno;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> buff[<span style="color:#ae81ff">1028</span>];
+</span></span><span style="display:flex;"><span>    retval <span style="color:#f92672">=</span> read(fd, buff, <span style="color:#66d9ef">sizeof</span>(buff));
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (retval <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;read /proc/cpuinfo&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> errno;
+</span></span><span style="display:flex;"><span>    }    
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>hyper_string <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;hypervisor&#34;</span>;    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (strstr(buff, hyper_string))
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        puts(<span style="color:#e6db74">&#34;We&#39;re virtualized!&#34;</span>);
+</span></span><span style="display:flex;"><span>        exit(<span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>()
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> retval <span style="color:#f92672">=</span> check_tracer();    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (retval <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        puts(<span style="color:#e6db74">&#34;check tracer failed&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> retval;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    retval <span style="color:#f92672">=</span> virtualization_check();
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (retval <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        puts(<span style="color:#e6db74">&#34;virtualization check failed&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> retval;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    puts(<span style="color:#e6db74">&#34;No Spy Found...&#34;</span>);
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="anti-anti-re">Anti-Anti-RE</h2>
 <p>This implementation is fairly trivial, and real world samples will make it much more difficult to determine that they are even doing these checks.</p>
 <p>To defeat this example, we&rsquo;ll just add in a relative jump.</p>
 <p>By looking at the dissasembly, we can see the distance we need to jump.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">00000000000013e6 &lt;main&gt;:                                                                                              
-    13e6:       <span style="color:#ae81ff">55</span>                      push   rbp                                                                    
-    13e7:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp                                                                
-    13ea:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">83</span> ec <span style="color:#ae81ff">10</span>             sub    rsp,0x10                                                               
-    13ee:       b8 <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>          mov    eax,0x0                                                                
-    13f3:       e8 cd fd ff ff          call   11c5 &lt;check_tracer&gt;                                                    
-    13f8:       <span style="color:#ae81ff">89</span> <span style="color:#ae81ff">45</span> fc                mov    DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>,eax                                                
-    13fb:       <span style="color:#ae81ff">83</span> 7d fc <span style="color:#ae81ff">00</span>             cmp    DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>,0x0                                                
-    13ff:       <span style="color:#ae81ff">74</span> <span style="color:#ae81ff">11</span>                   je     <span style="color:#ae81ff">1412</span> &lt;main+0x2c&gt;                                                       
-    1401:       <span style="color:#ae81ff">48</span> 8d 3d ad 0c <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xcad<span style="color:#f92672">]</span>        <span style="color:#75715e"># 20b5 &lt;_IO_stdin_used+0xb5&gt;                    </span>
-    1408:       e8 <span style="color:#ae81ff">43</span> fc ff ff          call   <span style="color:#ae81ff">1050</span> &lt;puts@plt&gt;                                                        
-    140d:       8b <span style="color:#ae81ff">45</span> fc                mov    eax,DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>                                                
-    1410:       eb <span style="color:#ae81ff">35</span>                   jmp    <span style="color:#ae81ff">1447</span> &lt;main+0x61&gt;                                                       
-    1412:       b8 <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>          mov    eax,0x0                                                                
-    1417:       e8 <span style="color:#ae81ff">03</span> ff ff ff          call   131f &lt;virtualization_check&gt;                                            
-    141c:       <span style="color:#ae81ff">89</span> <span style="color:#ae81ff">45</span> fc                mov    DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>,eax                                                
-    141f:       <span style="color:#ae81ff">83</span> 7d fc <span style="color:#ae81ff">00</span>             cmp    DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>,0x0                                                
-    1423:       <span style="color:#ae81ff">74</span> <span style="color:#ae81ff">11</span>                   je     <span style="color:#ae81ff">1436</span> &lt;main+0x50&gt;                                                       
-    1425:       <span style="color:#ae81ff">48</span> 8d 3d 9d 0c <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xc9d<span style="color:#f92672">]</span>        <span style="color:#75715e"># 20c9 &lt;_IO_stdin_used+0xc9&gt;                    </span>
-    142c:       e8 1f fc ff ff          call   <span style="color:#ae81ff">1050</span> &lt;puts@plt&gt;                                                        
-    1431:       8b <span style="color:#ae81ff">45</span> fc                mov    eax,DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>                                                
-    1434:       eb <span style="color:#ae81ff">11</span>                   jmp    <span style="color:#ae81ff">1447</span> &lt;main+0x61&gt;                                                       
-    1436:       <span style="color:#ae81ff">48</span> 8d 3d a8 0c <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xca8<span style="color:#f92672">]</span>        <span style="color:#75715e"># 20e5 &lt;_IO_stdin_used+0xe5&gt;                   </span>
-    143d:       e8 0e fc ff ff          call   <span style="color:#ae81ff">1050</span> &lt;puts@plt&gt;                                                       
-    1442:       b8 <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>          mov    eax,0x0
-    1447:       c9                      leave
-    1448:       c3                      ret
-    1449:       0f 1f <span style="color:#ae81ff">80</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    nop    DWORD PTR <span style="color:#f92672">[</span>rax+0x0<span style="color:#f92672">]</span>
-</code></pre></div><p>We&rsquo;ll be jumping from the mov eax instruction just prior to the check_tracer call (0x13ee) to the instruction that loads the final string for printing (0x1436). That means we need to jump (0x1436 - 0x13ee = 0x48) bytes. We&rsquo;ll subtract another two bytes for our jmp instruction length, resulting in a 0x46 byte jump. We&rsquo;ll accomplish this using hexedit as shown in the previous posts, adding in our 0xeb 0x46 instructions (relative jump 46 bytes). This results in our main function looking like this (note the jmp at 0x13ee):</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">00000000000013e6 &lt;main&gt;:                                                                                              
-    13e6:       <span style="color:#ae81ff">55</span>                      push   rbp                                                                    
-    13e7:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp                                                                
-    13ea:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">83</span> ec <span style="color:#ae81ff">10</span>             sub    rsp,0x10                                                               
-    13ee:       eb <span style="color:#ae81ff">47</span>                   jmp    <span style="color:#ae81ff">1437</span> &lt;main+0x51&gt;                                                       
-    13f0:       <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>                   add    BYTE PTR <span style="color:#f92672">[</span>rax<span style="color:#f92672">]</span>,al                                                      
-    13f2:       <span style="color:#ae81ff">00</span> e8                   add    al,ch                                                                  
-    13f4:       cd fd                   int    0xfd                                                                   
-    13f6:       ff                      <span style="color:#f92672">(</span>bad<span style="color:#f92672">)</span>                                                                         
-    13f7:       ff <span style="color:#ae81ff">89</span> <span style="color:#ae81ff">45</span> fc <span style="color:#ae81ff">83</span> 7d       dec    DWORD PTR <span style="color:#f92672">[</span>rcx+0x7d83fc45<span style="color:#f92672">]</span>                                             
-    13fd:       fc                      cld                                                                           
-    13fe:       <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">74</span> <span style="color:#ae81ff">11</span> <span style="color:#ae81ff">48</span>             add    BYTE PTR <span style="color:#f92672">[</span>rcx+rdx*1+0x48<span style="color:#f92672">]</span>,dh                                           
-    1402:       8d 3d ad 0c <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>       lea    edi,<span style="color:#f92672">[</span>rip+0xcad<span style="color:#f92672">]</span>        <span style="color:#75715e"># 20b5 &lt;_IO_stdin_used+0xb5&gt;                    </span>
-    1408:       e8 <span style="color:#ae81ff">43</span> fc ff ff          call   <span style="color:#ae81ff">1050</span> &lt;puts@plt&gt;                                                        
-    140d:       8b <span style="color:#ae81ff">45</span> fc                mov    eax,DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>                                                
-    1410:       eb <span style="color:#ae81ff">35</span>                   jmp    <span style="color:#ae81ff">1447</span> &lt;main+0x61&gt;                                                       
-    1412:       b8 <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>          mov    eax,0x0                                                                
-    1417:       e8 <span style="color:#ae81ff">03</span> ff ff ff          call   131f &lt;virtualization_check&gt;                                            
-    141c:       <span style="color:#ae81ff">89</span> <span style="color:#ae81ff">45</span> fc                mov    DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>,eax                                                
-    141f:       <span style="color:#ae81ff">83</span> 7d fc <span style="color:#ae81ff">00</span>             cmp    DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>,0x0                                                
-    1423:       <span style="color:#ae81ff">74</span> <span style="color:#ae81ff">11</span>                   je     <span style="color:#ae81ff">1436</span> &lt;main+0x50&gt;                                                       
-    1425:       <span style="color:#ae81ff">48</span> 8d 3d 9d 0c <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xc9d<span style="color:#f92672">]</span>        <span style="color:#75715e"># 20c9 &lt;_IO_stdin_used+0xc9&gt;                    </span>
-    142c:       e8 1f fc ff ff          call   <span style="color:#ae81ff">1050</span> &lt;puts@plt&gt;                                                        
-    1431:       8b <span style="color:#ae81ff">45</span> fc                mov    eax,DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>                                                
-    1434:       eb <span style="color:#ae81ff">11</span>                   jmp    <span style="color:#ae81ff">1447</span> &lt;main+0x61&gt;                                                       
-    1436:       <span style="color:#ae81ff">48</span> 8d 3d a8 0c <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xca8<span style="color:#f92672">]</span>        <span style="color:#75715e"># 20e5 &lt;_IO_stdin_used+0xe5&gt;                    </span>
-    143d:       e8 0e fc ff ff          call   <span style="color:#ae81ff">1050</span> &lt;puts@plt&gt;                                                        
-    1442:       b8 <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>          mov    eax,0x0                                                                
-    1447:       c9                      leave
-    1448:       c3                      ret
-    1449:       0f 1f <span style="color:#ae81ff">80</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    nop    DWORD PTR <span style="color:#f92672">[</span>rax+0x0<span style="color:#f92672">]</span> 
-</code></pre></div><p>I&rsquo;m not sure why the relative jump ended up being interpreted as 47 bytes, but we can now execute the sample without triggering any of its detection methods.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>00000000000013e6 &lt;main&gt;:                                                                                              
+</span></span><span style="display:flex;"><span>    13e6:       <span style="color:#ae81ff">55</span>                      push   rbp                                                                    
+</span></span><span style="display:flex;"><span>    13e7:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp                                                                
+</span></span><span style="display:flex;"><span>    13ea:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">83</span> ec <span style="color:#ae81ff">10</span>             sub    rsp,0x10                                                               
+</span></span><span style="display:flex;"><span>    13ee:       b8 <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>          mov    eax,0x0                                                                
+</span></span><span style="display:flex;"><span>    13f3:       e8 cd fd ff ff          call   11c5 &lt;check_tracer&gt;                                                    
+</span></span><span style="display:flex;"><span>    13f8:       <span style="color:#ae81ff">89</span> <span style="color:#ae81ff">45</span> fc                mov    DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>,eax                                                
+</span></span><span style="display:flex;"><span>    13fb:       <span style="color:#ae81ff">83</span> 7d fc <span style="color:#ae81ff">00</span>             cmp    DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>,0x0                                                
+</span></span><span style="display:flex;"><span>    13ff:       <span style="color:#ae81ff">74</span> <span style="color:#ae81ff">11</span>                   je     <span style="color:#ae81ff">1412</span> &lt;main+0x2c&gt;                                                       
+</span></span><span style="display:flex;"><span>    1401:       <span style="color:#ae81ff">48</span> 8d 3d ad 0c <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xcad<span style="color:#f92672">]</span>        <span style="color:#75715e"># 20b5 &lt;_IO_stdin_used+0xb5&gt;                    </span>
+</span></span><span style="display:flex;"><span>    1408:       e8 <span style="color:#ae81ff">43</span> fc ff ff          call   <span style="color:#ae81ff">1050</span> &lt;puts@plt&gt;                                                        
+</span></span><span style="display:flex;"><span>    140d:       8b <span style="color:#ae81ff">45</span> fc                mov    eax,DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>                                                
+</span></span><span style="display:flex;"><span>    1410:       eb <span style="color:#ae81ff">35</span>                   jmp    <span style="color:#ae81ff">1447</span> &lt;main+0x61&gt;                                                       
+</span></span><span style="display:flex;"><span>    1412:       b8 <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>          mov    eax,0x0                                                                
+</span></span><span style="display:flex;"><span>    1417:       e8 <span style="color:#ae81ff">03</span> ff ff ff          call   131f &lt;virtualization_check&gt;                                            
+</span></span><span style="display:flex;"><span>    141c:       <span style="color:#ae81ff">89</span> <span style="color:#ae81ff">45</span> fc                mov    DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>,eax                                                
+</span></span><span style="display:flex;"><span>    141f:       <span style="color:#ae81ff">83</span> 7d fc <span style="color:#ae81ff">00</span>             cmp    DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>,0x0                                                
+</span></span><span style="display:flex;"><span>    1423:       <span style="color:#ae81ff">74</span> <span style="color:#ae81ff">11</span>                   je     <span style="color:#ae81ff">1436</span> &lt;main+0x50&gt;                                                       
+</span></span><span style="display:flex;"><span>    1425:       <span style="color:#ae81ff">48</span> 8d 3d 9d 0c <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xc9d<span style="color:#f92672">]</span>        <span style="color:#75715e"># 20c9 &lt;_IO_stdin_used+0xc9&gt;                    </span>
+</span></span><span style="display:flex;"><span>    142c:       e8 1f fc ff ff          call   <span style="color:#ae81ff">1050</span> &lt;puts@plt&gt;                                                        
+</span></span><span style="display:flex;"><span>    1431:       8b <span style="color:#ae81ff">45</span> fc                mov    eax,DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>                                                
+</span></span><span style="display:flex;"><span>    1434:       eb <span style="color:#ae81ff">11</span>                   jmp    <span style="color:#ae81ff">1447</span> &lt;main+0x61&gt;                                                       
+</span></span><span style="display:flex;"><span>    1436:       <span style="color:#ae81ff">48</span> 8d 3d a8 0c <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xca8<span style="color:#f92672">]</span>        <span style="color:#75715e"># 20e5 &lt;_IO_stdin_used+0xe5&gt;                   </span>
+</span></span><span style="display:flex;"><span>    143d:       e8 0e fc ff ff          call   <span style="color:#ae81ff">1050</span> &lt;puts@plt&gt;                                                       
+</span></span><span style="display:flex;"><span>    1442:       b8 <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>          mov    eax,0x0
+</span></span><span style="display:flex;"><span>    1447:       c9                      leave
+</span></span><span style="display:flex;"><span>    1448:       c3                      ret
+</span></span><span style="display:flex;"><span>    1449:       0f 1f <span style="color:#ae81ff">80</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    nop    DWORD PTR <span style="color:#f92672">[</span>rax+0x0<span style="color:#f92672">]</span>
+</span></span></code></pre></div><p>We&rsquo;ll be jumping from the mov eax instruction just prior to the check_tracer call (0x13ee) to the instruction that loads the final string for printing (0x1436). That means we need to jump (0x1436 - 0x13ee = 0x48) bytes. We&rsquo;ll subtract another two bytes for our jmp instruction length, resulting in a 0x46 byte jump. We&rsquo;ll accomplish this using hexedit as shown in the previous posts, adding in our 0xeb 0x46 instructions (relative jump 46 bytes). This results in our main function looking like this (note the jmp at 0x13ee):</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>00000000000013e6 &lt;main&gt;:                                                                                              
+</span></span><span style="display:flex;"><span>    13e6:       <span style="color:#ae81ff">55</span>                      push   rbp                                                                    
+</span></span><span style="display:flex;"><span>    13e7:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">89</span> e5                mov    rbp,rsp                                                                
+</span></span><span style="display:flex;"><span>    13ea:       <span style="color:#ae81ff">48</span> <span style="color:#ae81ff">83</span> ec <span style="color:#ae81ff">10</span>             sub    rsp,0x10                                                               
+</span></span><span style="display:flex;"><span>    13ee:       eb <span style="color:#ae81ff">47</span>                   jmp    <span style="color:#ae81ff">1437</span> &lt;main+0x51&gt;                                                       
+</span></span><span style="display:flex;"><span>    13f0:       <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>                   add    BYTE PTR <span style="color:#f92672">[</span>rax<span style="color:#f92672">]</span>,al                                                      
+</span></span><span style="display:flex;"><span>    13f2:       <span style="color:#ae81ff">00</span> e8                   add    al,ch                                                                  
+</span></span><span style="display:flex;"><span>    13f4:       cd fd                   int    0xfd                                                                   
+</span></span><span style="display:flex;"><span>    13f6:       ff                      <span style="color:#f92672">(</span>bad<span style="color:#f92672">)</span>                                                                         
+</span></span><span style="display:flex;"><span>    13f7:       ff <span style="color:#ae81ff">89</span> <span style="color:#ae81ff">45</span> fc <span style="color:#ae81ff">83</span> 7d       dec    DWORD PTR <span style="color:#f92672">[</span>rcx+0x7d83fc45<span style="color:#f92672">]</span>                                             
+</span></span><span style="display:flex;"><span>    13fd:       fc                      cld                                                                           
+</span></span><span style="display:flex;"><span>    13fe:       <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">74</span> <span style="color:#ae81ff">11</span> <span style="color:#ae81ff">48</span>             add    BYTE PTR <span style="color:#f92672">[</span>rcx+rdx*1+0x48<span style="color:#f92672">]</span>,dh                                           
+</span></span><span style="display:flex;"><span>    1402:       8d 3d ad 0c <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>       lea    edi,<span style="color:#f92672">[</span>rip+0xcad<span style="color:#f92672">]</span>        <span style="color:#75715e"># 20b5 &lt;_IO_stdin_used+0xb5&gt;                    </span>
+</span></span><span style="display:flex;"><span>    1408:       e8 <span style="color:#ae81ff">43</span> fc ff ff          call   <span style="color:#ae81ff">1050</span> &lt;puts@plt&gt;                                                        
+</span></span><span style="display:flex;"><span>    140d:       8b <span style="color:#ae81ff">45</span> fc                mov    eax,DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>                                                
+</span></span><span style="display:flex;"><span>    1410:       eb <span style="color:#ae81ff">35</span>                   jmp    <span style="color:#ae81ff">1447</span> &lt;main+0x61&gt;                                                       
+</span></span><span style="display:flex;"><span>    1412:       b8 <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>          mov    eax,0x0                                                                
+</span></span><span style="display:flex;"><span>    1417:       e8 <span style="color:#ae81ff">03</span> ff ff ff          call   131f &lt;virtualization_check&gt;                                            
+</span></span><span style="display:flex;"><span>    141c:       <span style="color:#ae81ff">89</span> <span style="color:#ae81ff">45</span> fc                mov    DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>,eax                                                
+</span></span><span style="display:flex;"><span>    141f:       <span style="color:#ae81ff">83</span> 7d fc <span style="color:#ae81ff">00</span>             cmp    DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>,0x0                                                
+</span></span><span style="display:flex;"><span>    1423:       <span style="color:#ae81ff">74</span> <span style="color:#ae81ff">11</span>                   je     <span style="color:#ae81ff">1436</span> &lt;main+0x50&gt;                                                       
+</span></span><span style="display:flex;"><span>    1425:       <span style="color:#ae81ff">48</span> 8d 3d 9d 0c <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xc9d<span style="color:#f92672">]</span>        <span style="color:#75715e"># 20c9 &lt;_IO_stdin_used+0xc9&gt;                    </span>
+</span></span><span style="display:flex;"><span>    142c:       e8 1f fc ff ff          call   <span style="color:#ae81ff">1050</span> &lt;puts@plt&gt;                                                        
+</span></span><span style="display:flex;"><span>    1431:       8b <span style="color:#ae81ff">45</span> fc                mov    eax,DWORD PTR <span style="color:#f92672">[</span>rbp-0x4<span style="color:#f92672">]</span>                                                
+</span></span><span style="display:flex;"><span>    1434:       eb <span style="color:#ae81ff">11</span>                   jmp    <span style="color:#ae81ff">1447</span> &lt;main+0x61&gt;                                                       
+</span></span><span style="display:flex;"><span>    1436:       <span style="color:#ae81ff">48</span> 8d 3d a8 0c <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    lea    rdi,<span style="color:#f92672">[</span>rip+0xca8<span style="color:#f92672">]</span>        <span style="color:#75715e"># 20e5 &lt;_IO_stdin_used+0xe5&gt;                    </span>
+</span></span><span style="display:flex;"><span>    143d:       e8 0e fc ff ff          call   <span style="color:#ae81ff">1050</span> &lt;puts@plt&gt;                                                        
+</span></span><span style="display:flex;"><span>    1442:       b8 <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>          mov    eax,0x0                                                                
+</span></span><span style="display:flex;"><span>    1447:       c9                      leave
+</span></span><span style="display:flex;"><span>    1448:       c3                      ret
+</span></span><span style="display:flex;"><span>    1449:       0f 1f <span style="color:#ae81ff">80</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span> <span style="color:#ae81ff">00</span>    nop    DWORD PTR <span style="color:#f92672">[</span>rax+0x0<span style="color:#f92672">]</span> 
+</span></span></code></pre></div><p>I&rsquo;m not sure why the relative jump ended up being interpreted as 47 bytes, but we can now execute the sample without triggering any of its detection methods.</p>
 <h2 id="conclusion">Conclusion</h2>
 <p>The methodologies shown here are a highly simplified version of real world techniques, but are still useful to showcase what is possible in the realm of anti-RE. Feel free to contact me with any suggestions and/or corrections. Thanks for reading!</p>
 
@@ -397,7 +397,7 @@ Name:   gdb
     <div class="post-footer">
       <div id="disqus_thread"></div>
 <script type="application/javascript">
-    var disqus_config = function () {
+    window.disqus_config = function () {
     
     
     

@@ -15,7 +15,7 @@
       <guid>https://GreaterGoodest.github.io/post/elf_science_p3/</guid>
       <description>Introduction This post is part of a three part series (so far)
  Part 1 Part 2  As usual, a regularly updated version of the code base associated with this series can be found on my github.
-In the last edition of ELF Science, we defeated our encryption methodology by running the binary in a debugger, setting a breakpoint after self-decryption is complete, and dumping the decrypted memory. We then re-wrote the binary using these decrypted instructions, and NOP&amp;rsquo;d out the xor encryption method.</description>
+In the last ELF Science post, we defeated our encryption methodology by running the binary in a debugger, setting a breakpoint after self-decryption is complete, and dumping the decrypted memory. We then re-wrote the binary using these decrypted instructions, and NOP&amp;rsquo;d out the xor encryption method.</description>
     </item>
     
     <item>
