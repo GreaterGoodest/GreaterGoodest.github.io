@@ -6,7 +6,17 @@
     <description>Recent content in Posts on Goodest Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Fri, 07 Jan 2022 20:57:52 -0600</lastBuildDate><atom:link href="https://GreaterGoodest.github.io/post/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Tue, 10 May 2022 17:49:54 -0500</lastBuildDate><atom:link href="https://GreaterGoodest.github.io/post/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Sneaky Packets Part 1 - Basic Proxy/Tunnel</title>
+      <link>https://GreaterGoodest.github.io/post/tunnel_p1/</link>
+      <pubDate>Tue, 10 May 2022 17:49:54 -0500</pubDate>
+      
+      <guid>https://GreaterGoodest.github.io/post/tunnel_p1/</guid>
+      <description>Introduction The repo associated with this project can be found here.
+Don&amp;rsquo;t you hate it when pesky firewall rules or network configurations prevent you from reaching your favorite definitely non-malicious domains? Someone recently told me that their workplace even blocks connections on port 1337! We can&amp;rsquo;t have that. Let&amp;rsquo;s dive into some things we can do to alleviate common networking challenges faced by red teams, as well as inform blue teamers of typical shenanigans used to circumvent various network protections.</description>
+    </item>
+    
     <item>
       <title>ELF Science Part 3</title>
       <link>https://GreaterGoodest.github.io/post/elf_science_p3/</link>

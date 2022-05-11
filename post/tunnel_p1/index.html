@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <title>Sneaky Packets Part 1 - Basic Proxy/Tunnel // Goodest Blog</title>
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <meta charset="utf-8" />
+    <meta name="generator" content="Hugo 0.96.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="author" content="Ryan Good" />
+    <meta name="description" content="" />
+    <link rel="stylesheet" href="https://GreaterGoodest.github.io/css/main.min.10e29dc68baafd87fe6d59b56ecc8c1e5058ee779d7de160d75db605c2d32423.css" />
+
+    
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Sneaky Packets Part 1 - Basic Proxy/Tunnel"/>
+<meta name="twitter:description" content="Introduction The repo associated with this project can be found here.
+Don&rsquo;t you hate it when pesky firewall rules or network configurations prevent you from reaching your favorite definitely non-malicious domains? Someone recently told me that their workplace even blocks connections on port 1337! We can&rsquo;t have that. Let&rsquo;s dive into some things we can do to alleviate common networking challenges faced by red teams, as well as inform blue teamers of typical shenanigans used to circumvent various network protections."/>
+
+    <meta property="og:title" content="Sneaky Packets Part 1 - Basic Proxy/Tunnel" />
+<meta property="og:description" content="Introduction The repo associated with this project can be found here.
+Don&rsquo;t you hate it when pesky firewall rules or network configurations prevent you from reaching your favorite definitely non-malicious domains? Someone recently told me that their workplace even blocks connections on port 1337! We can&rsquo;t have that. Let&rsquo;s dive into some things we can do to alleviate common networking challenges faced by red teams, as well as inform blue teamers of typical shenanigans used to circumvent various network protections." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://GreaterGoodest.github.io/post/tunnel_p1/" /><meta property="article:section" content="post" />
+<meta property="article:published_time" content="2022-05-10T17:49:54-05:00" />
+<meta property="article:modified_time" content="2022-05-10T17:49:54-05:00" />
+
+
+
+  </head>
+  <body>
+    <header class="app-header">
+      <a href="https://GreaterGoodest.github.io"><img class="app-header-avatar" src="/images/greatergoodest.jpg" alt="Ryan Good" /></a>
+      <h1>Goodest Blog</h1>
+      <p>Blogging about low level cyber security and red team tooling. Occasionally know what I&#39;m talking about.</p>
+      <div class="app-header-social">
+        
+          <a href="https://www.linkedin.com/in/ryanagood/" target="_blank" rel="noreferrer noopener">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-linkedin">
+  <title>LinkedIn</title>
+  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle>
+</svg>
+          </a>
+        
+          <a href="https://github.com/GreaterGoodest/" target="_blank" rel="noreferrer noopener">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-github">
+  <title>GitHub</title>
+  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+</svg>
+          </a>
+        
+          <a href="https://twitter.com/GreaterGoodest" target="_blank" rel="noreferrer noopener">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-twitter">
+  <title>Twitter</title>
+  <path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path>
+</svg>
+          </a>
+        
+      </div>
+    <aside>
+      <nav id="TableOfContents">
+  <ul>
+    <li><a href="#introduction">Introduction</a></li>
+    <li><a href="#proxying-summary">Proxying Summary</a></li>
+    <li><a href="#main">Main</a></li>
+    <li><a href="#listen">Listen</a></li>
+    <li><a href="#remote-connection">Remote Connection</a></li>
+    <li><a href="#data-exchange">Data Exchange</a></li>
+    <li><a href="#tunnelling-summary">Tunnelling Summary</a></li>
+    <li><a href="#remote-service">Remote Service</a></li>
+    <li><a href="#local-listener">Local Listener</a></li>
+    <li><a href="#tunnel-demonstration">Tunnel Demonstration</a></li>
+  </ul>
+</nav>
+    </aside>
+    </header>
+    <main class="app-container">
+      
+  <article class="post">
+    <header class="post-header">
+      <h1 class ="post-title">Sneaky Packets Part 1 - Basic Proxy/Tunnel</h1>
+      <div class="post-meta">
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-calendar">
+  <title>calendar</title>
+  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+</svg>
+          May 10, 2022
+        </div>
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-clock">
+  <title>clock</title>
+  <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
+</svg>
+          15 min read
+        </div>
+      </div>
+    </header>
+    <div class="post-content">
+      <h2 id="introduction">Introduction</h2>
+<p>The repo associated with this project can be found <a href="https://github.com/GreaterGoodest/tunnel">here</a>.</p>
+<p>Don&rsquo;t you hate it when pesky firewall rules or network configurations prevent you from reaching your favorite definitely non-malicious domains? Someone recently told me that their workplace even blocks connections on port 1337! We can&rsquo;t have that. Let&rsquo;s dive into some things we can do to alleviate common networking challenges faced by red teams, as well as inform blue teamers of typical shenanigans used to circumvent various network protections.</p>
+<p>Now you might be wondering why we would want to build our own proxy and/or tunneling capability when there&rsquo;s lots of great open source tools already available. We could use <a href="https://www.nginx.com/">NGINX</a> to proxy our traffic, or <a href="https://en.wikipedia.org/wiki/Secure_Shell">SSH</a> to create any basic TCP tunnels we might need.</p>
+<div style="text-align:center;">
+    <img alt="Roll Your Own" src="/images/rollurown.PNG" height=300 />
+</div>
+<p>Well those solutions are boring, and we&rsquo;re not skids so we want to understand how this kind of stuff works under the hood. Knowing how to implement these types of features also allows you to add them into all sorts of useful tools, as well as understanding how adversaries might be using them in their capabilities. In addition, having unique tools can often reduce the chances of your methodologies/tools already being signaturized.</p>
+<p>This tutorial will walk you through how to implement your own simple proxy and tunnelling capability. I&rsquo;ve also put together a docker-based environment involving multiple containers to show you some typical use cases.</p>
+<p>I&rsquo;d also like to point out that a tunnel also usually involves encapsulating data into a pre-existing protocol (http/s, icmp, dns, your own custom protocol, etc.). We&rsquo;re not going to implement that piece here, but will likely do it in a follow on post. This post focuses on taking in a connection and getting it to a destination, while also bypassing potential blocks along the way.</p>
+<h2 id="proxying-summary">Proxying Summary</h2>
+<p>To build towards the concept of tunneling, we&rsquo;ll start by implementing a simple proxy. Proxies are fairly simple and most people are familiar with them, making them a great starting point. The proxy I&rsquo;ll be demonstrating in this tutorial is purposefully as simple as possible. For that reason it is not at all ready for any sort of deployment (don&rsquo;t use it). This also goes for the tunneling code shown later. Perhaps as we build on these techniques in future tutorials, we&rsquo;ll approach something remotely deployable.</p>
+<p>The concept of a proxy is straight forward enough. A proxy simply acts as a forwarding agent for any of your network traffic. In this case we&rsquo;ll be focusing on <a href="https://www.fortinet.com/resources/cyberglossary/tcp-ip#:~:text=TCP%20stands%20for%20Transmission%20Control,data%20and%20messages%20over%20networks.">TCP</a> based communications, but similar methodologies would allow this to also be expanded to <a href="https://www.techtarget.com/searchnetworking/definition/UDP-User-Datagram-Protocol#:~:text=User%20Datagram%20Protocol%20(UDP)%20is,provided%20by%20the%20receiving%20party.">UDP</a>. In our example, we&rsquo;ll create a bare bones TCP traffic forwarder that will listen for connections on a specified port, and forward the received traffic to a specified destination.</p>
+<p><img src="/images/proxy.gif" alt="Proxy"></p>
+<h2 id="main">Main</h2>
+<p>Our main function will set up a local listener to receive any traffic that is to be forwarded. Upon receiving a connection, it will establish another connection to the specified final destination. At this point it will loop, transfering data back and forth from the original source to the final destination and vice versa. The proxy sits in the middle of these interactions, ensuring packets get where they are supposed to go, and somewhat masking the identity of the original source.</p>
+<p>Here&rsquo;s the main function for our proxy, which we will break down momentarily:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>()
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> status <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> listen_sock <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;  <span style="color:#75715e">// Receives proxy requests
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">int</span> remote_sock <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;  <span style="color:#75715e">// Proxy target
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">int</span> client_sock <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;  <span style="color:#75715e">// Client to proxy
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">struct</span> sockaddr_in client_addr <span style="color:#f92672">=</span> {<span style="color:#ae81ff">0</span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    status <span style="color:#f92672">=</span> setup_local_listener(<span style="color:#f92672">&amp;</span>listen_sock);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        puts(<span style="color:#e6db74">&#34;main: Failed to setup local listener.&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    client_sock <span style="color:#f92672">=</span> accept(listen_sock, (<span style="color:#66d9ef">struct</span> sockaddr <span style="color:#f92672">*</span>)<span style="color:#f92672">&amp;</span>client_addr, <span style="color:#f92672">&amp;</span>(<span style="color:#66d9ef">int</span>){<span style="color:#ae81ff">0</span>});
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (client_sock <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (errno <span style="color:#f92672">!=</span> EAGAIN){
+</span></span><span style="display:flex;"><span>            perror(<span style="color:#e6db74">&#34;main accept&#34;</span>);
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">return</span> errno;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    } <span style="color:#66d9ef">else</span> 
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        puts(<span style="color:#e6db74">&#34;accepted&#34;</span>);
+</span></span><span style="display:flex;"><span>        status <span style="color:#f92672">=</span> fcntl(client_sock, F_SETFL, fcntl(client_sock, F_GETFL, <span style="color:#ae81ff">0</span>) <span style="color:#f92672">|</span> O_NONBLOCK);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>        {
+</span></span><span style="display:flex;"><span>            perror(<span style="color:#e6db74">&#34;main client_sock fnctl&#34;</span>);
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">return</span> status;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    status <span style="color:#f92672">=</span> setup_remote_sock(<span style="color:#f92672">&amp;</span>remote_sock);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        puts(<span style="color:#e6db74">&#34;main: Failed to setup remote socket.&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span>(<span style="color:#ae81ff">1</span>){ 
+</span></span><span style="display:flex;"><span>        status <span style="color:#f92672">=</span> data_checks(client_sock, remote_sock);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&amp;&amp;</span> errno <span style="color:#f92672">!=</span> EAGAIN)
+</span></span><span style="display:flex;"><span>        {
+</span></span><span style="display:flex;"><span>            puts(<span style="color:#e6db74">&#34;main: Failed data checks.&#34;</span>);
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>        }<span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>){
+</span></span><span style="display:flex;"><span>            puts(<span style="color:#e6db74">&#34;connection closed&#34;</span>);
+</span></span><span style="display:flex;"><span>            close(client_sock);
+</span></span><span style="display:flex;"><span>            close(remote_sock);
+</span></span><span style="display:flex;"><span>            client_sock <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>            remote_sock <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>The code above starts by setting up the local listener, which awaits connections from the original source we wish to proxy. Once the socket is properly set up, it&rsquo;s file descriptor will be stored in the <strong>listen_sock</strong> variable.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span>    status <span style="color:#f92672">=</span> setup_local_listener(<span style="color:#f92672">&amp;</span>listen_sock);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        puts(<span style="color:#e6db74">&#34;main: Failed to setup local listener.&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span></code></pre></div><h2 id="listen">Listen</h2>
+<p>Let&rsquo;s take a look at how we&rsquo;re accomplishing this:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#75715e">/**
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @brief Sets up the local listener socket
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @param listen_sock pointer to socket fd to setup
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @return int error code
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> */</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">setup_local_listener</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>listen_sock)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> status <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> sockaddr_in listen_addr <span style="color:#f92672">=</span> {<span style="color:#ae81ff">0</span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    listen_addr.sin_family <span style="color:#f92672">=</span> AF_INET;
+</span></span><span style="display:flex;"><span>    status <span style="color:#f92672">=</span> inet_pton(AF_INET, LISTEN_ADDR, <span style="color:#f92672">&amp;</span>(listen_addr.sin_addr));
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">!=</span> <span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;setup_local_listener inet_pton&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    listen_addr.sin_port <span style="color:#f92672">=</span> htons(LISTEN_PORT);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">//Create listening socket to receive proxy requests
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#f92672">*</span>listen_sock <span style="color:#f92672">=</span> socket(AF_INET, SOCK_STREAM, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (<span style="color:#f92672">*</span>listen_sock <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;setup_local_listener socket&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> status;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    status <span style="color:#f92672">=</span> setsockopt(<span style="color:#f92672">*</span>listen_sock, SOL_SOCKET, SO_REUSEADDR, <span style="color:#f92672">&amp;</span>(<span style="color:#66d9ef">int</span>){<span style="color:#ae81ff">1</span>}, <span style="color:#66d9ef">sizeof</span>(<span style="color:#66d9ef">int</span>));
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;setup_local_listener setsockopt&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> status;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    status <span style="color:#f92672">=</span> bind(<span style="color:#f92672">*</span>listen_sock, (<span style="color:#66d9ef">struct</span> sockaddr <span style="color:#f92672">*</span>)<span style="color:#f92672">&amp;</span>listen_addr, <span style="color:#66d9ef">sizeof</span>(listen_addr));
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;setup_local_listener bind&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> status;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    status <span style="color:#f92672">=</span> listen(<span style="color:#f92672">*</span>listen_sock, SOMAXCONN);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;setup_local_listener listen&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> status;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> status;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>It might seem like a lot, but the vast majority of this is just error checking.</p>
+<p>The first thing we&rsquo;re doing to set up the local listener is filling in the <strong>listen_addr</strong> struct with appropriate values.</p>
+<p>We&rsquo;ll start by converting our listening address (<strong>LISTEN_ADDR</strong>) to a form the linux kernel expects (an integer) via the <a href="https://man7.org/linux/man-pages/man3/inet_pton.3.html">inet_pton</a> syscall.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span>inet_pton(AF_INET, LISTEN_ADDR, <span style="color:#f92672">&amp;</span>(listen_addr.sin_addr));
+</span></span></code></pre></div><p>The port is already an integer, but it&rsquo;s in little endian format, and needs to be converted to big endian. What this basically means is that the port number needs to be converted from something our local CPU understands, to a universal network standard. The <a href="https://linux.die.net/man/3/htons">htons</a> system call will handle this for us.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span>listen_addr.sin_port <span style="color:#f92672">=</span> htons(LISTEN_PORT);
+</span></span></code></pre></div><p>Now that our <strong>listen_addr</strong> struct is built, we can set up the socket itself. AF_INET refers to ipv4, and SOCK_STREAM informs the kernel we&rsquo;ll be using TCP. As a side note, you can do some pretty neat stuff in regards to inter-process communication (IPC) using <a href="https://man7.org/linux/man-pages/man7/unix.7.html">AF_UNIX</a> sockets.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#f92672">*</span>listen_sock <span style="color:#f92672">=</span> socket(AF_INET, SOCK_STREAM, <span style="color:#ae81ff">0</span>);
+</span></span></code></pre></div><p>Next, we&rsquo;ll allow our socket to be re-usable. This makes it so that our operating system won&rsquo;t try to prevent us from listening on the port again if the process crashes. The <strong>&amp;(int){1}</strong> value basically just allows us to ignore some of the output this function provides, as we don&rsquo;t really care.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span>setsockopt(<span style="color:#f92672">*</span>listen_sock, SOL_SOCKET, SO_REUSEADDR, <span style="color:#f92672">&amp;</span>(<span style="color:#66d9ef">int</span>){<span style="color:#ae81ff">1</span>}, <span style="color:#66d9ef">sizeof</span>(<span style="color:#66d9ef">int</span>));
+</span></span></code></pre></div><p>Lastly, we&rsquo;ll bind our socket to the information stored in *<em>listen_addr</em>, and begin listening for connections.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span>bind(<span style="color:#f92672">*</span>listen_sock, (<span style="color:#66d9ef">struct</span> sockaddr <span style="color:#f92672">*</span>)<span style="color:#f92672">&amp;</span>listen_addr, <span style="color:#66d9ef">sizeof</span>(listen_addr));
+</span></span><span style="display:flex;"><span>listen(<span style="color:#f92672">*</span>listen_sock, SOMAXCONN);
+</span></span></code></pre></div><p>We&rsquo;re now ready to receive connections to proxy! Of course if we actually receive any connections at this point, we&rsquo;ll just end up dropping them.</p>
+<p><img src="/images/charlie-brown-fail.gif" alt="charlie fail"></p>
+<p>In order to actually receive a new connection we&rsquo;ll need to accept it. We&rsquo;ll then have a new socket associated with that connection.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span>client_sock <span style="color:#f92672">=</span> accept(listen_sock, (<span style="color:#66d9ef">struct</span> sockaddr <span style="color:#f92672">*</span>)<span style="color:#f92672">&amp;</span>client_addr, <span style="color:#f92672">&amp;</span>(<span style="color:#66d9ef">int</span>){<span style="color:#ae81ff">0</span>});
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> (client_sock <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (errno <span style="color:#f92672">!=</span> EAGAIN){
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;main accept&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> errno;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>} <span style="color:#66d9ef">else</span> 
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    puts(<span style="color:#e6db74">&#34;accepted&#34;</span>);
+</span></span><span style="display:flex;"><span>    status <span style="color:#f92672">=</span> fcntl(client_sock, F_SETFL, fcntl(client_sock, F_GETFL, <span style="color:#ae81ff">0</span>) <span style="color:#f92672">|</span> O_NONBLOCK); <span style="color:#75715e">// Add non-blocking to existing settings
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;main client_sock fnctl&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> status;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>You&rsquo;ll see we&rsquo;re also altering the settings associated with the socket via the <a href="https://man7.org/linux/man-pages/man2/fcntl.2.html">fcntl</a> system call. Don&rsquo;t worry too much about how this works, just know that the <strong>O_NONBLOCK</strong> flag makes the socket &ldquo;non-blocking&rdquo;. This allows the program to keep moving even when we aren&rsquo;t receving new data on this socket. You&rsquo;ll see why this matters soon enough.</p>
+<h2 id="remote-connection">Remote Connection</h2>
+<p>Now we have our client connected, we&rsquo;ll want to connect them to their destination.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span>status <span style="color:#f92672">=</span> setup_remote_sock(<span style="color:#f92672">&amp;</span>remote_sock);
+</span></span></code></pre></div><p>The process for this is very similar to how we set up the local connection, except simpler. We don&rsquo;t need to bind anything or listen for connections, we simply establish a connection to the configured remote address. Once again, the resulting socket will be made non-blocking.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#75715e">/**
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @brief Set up the remote socket
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @param remote_sock target socket to proxy traffic to
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @return int error code
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> */</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">setup_remote_sock</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>remote_sock)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> status <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> sockaddr_in remote_addr;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">*</span>remote_sock <span style="color:#f92672">=</span> socket(AF_INET, SOCK_STREAM, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (<span style="color:#f92672">*</span>remote_sock <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;setup_remote_sock: socket&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    remote_addr.sin_family <span style="color:#f92672">=</span> AF_INET;
+</span></span><span style="display:flex;"><span>    status <span style="color:#f92672">=</span> inet_pton(AF_INET, REMOTE_ADDR, <span style="color:#f92672">&amp;</span>(remote_addr.sin_addr));
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">!=</span> <span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;setup_remote_sock: inet_pton&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    remote_addr.sin_port <span style="color:#f92672">=</span> htons(REMOTE_PORT);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    status <span style="color:#f92672">=</span> connect(<span style="color:#f92672">*</span>remote_sock, (<span style="color:#66d9ef">struct</span> sockaddr <span style="color:#f92672">*</span>)<span style="color:#f92672">&amp;</span>remote_addr, <span style="color:#66d9ef">sizeof</span>(remote_addr));
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;setup_remote_sock: connect&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> status;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    status <span style="color:#f92672">=</span> fcntl(<span style="color:#f92672">*</span>remote_sock, F_SETFL, fcntl(<span style="color:#f92672">*</span>remote_sock, F_GETFL, <span style="color:#ae81ff">0</span>) <span style="color:#f92672">|</span> O_NONBLOCK);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;setup_local_listener fnctl&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> status;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> status;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="data-exchange">Data Exchange</h2>
+<p>Great! Our connections are set up and we&rsquo;re ready to exchange data. To accomplish this we&rsquo;ll loop continually, checking for new data from either side on each loop iteration. If there&rsquo;s any new data, we&rsquo;ll forward it to the appropriate destination.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">while</span>(<span style="color:#ae81ff">1</span>){ 
+</span></span><span style="display:flex;"><span>    status <span style="color:#f92672">=</span> data_checks(client_sock, remote_sock);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&amp;&amp;</span> errno <span style="color:#f92672">!=</span> EAGAIN)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        puts(<span style="color:#e6db74">&#34;main: Failed data checks.&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    }<span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>){
+</span></span><span style="display:flex;"><span>        puts(<span style="color:#e6db74">&#34;connection closed&#34;</span>);
+</span></span><span style="display:flex;"><span>        close(client_sock);
+</span></span><span style="display:flex;"><span>        close(remote_sock);
+</span></span><span style="display:flex;"><span>        client_sock <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>        remote_sock <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>You&rsquo;ll see when we check the status of our data_checks we&rsquo;re also checking if the error number is <strong>EAGAIN</strong>. This is because we want to ignore this &ldquo;error&rdquo;, as it just means we didn&rsquo;t receive any data on a non-blocking socket.</p>
+<p>And here&rsquo;s our data checks:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#75715e">/**
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @brief Checks for new data from client/server
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @param client_sock connected client socket
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @param remote_sock socket connection to target host
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @return int error code
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> */</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">data_checks</span>(<span style="color:#66d9ef">int</span> client_sock, <span style="color:#66d9ef">int</span> remote_sock)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> status <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> data[MAX_TCP] <span style="color:#f92672">=</span> {<span style="color:#ae81ff">0</span>};
+</span></span><span style="display:flex;"><span>    status <span style="color:#f92672">=</span> read(client_sock, data, <span style="color:#66d9ef">sizeof</span>(data)<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (strlen(data) <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        write(remote_sock, data, strlen(data)<span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>        memset(data, <span style="color:#ae81ff">0</span>, <span style="color:#66d9ef">sizeof</span>(data));
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    status <span style="color:#f92672">=</span> read(remote_sock, data, <span style="color:#66d9ef">sizeof</span>(data)<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (strlen(data) <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        write(client_sock, data, strlen(data)<span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>        memset(data, <span style="color:#ae81ff">0</span>, <span style="color:#66d9ef">sizeof</span>(data));
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> status;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Here&rsquo;s where using non-blocking sockets is important. With our current implementation, data can go back and forth from either side at any interval. If we were using traditional blocking sockets, we&rsquo;d restrict our connection to requiring the opposite side to send something back before we could continue. This might work for an http connection or something similar, but would fail for something like a remote shell or chat client.</p>
+<p>Let&rsquo;s see this in action&hellip;</p>
+<p><img src="/images/Proxy.gif" alt="Proxy Gif"></p>
+<p>In the example shown, the final destination is a <a href="http://netcat.sourceforge.net/">netcat</a> listener waiting for connections on port 1338 (Bottom right of the screen). The proxy is initiated on the top left of the screen, and listens on port 1337. The client (left side) then connects to the proxy using a netcat client, and begins communicating with the destination server.</p>
+<h2 id="tunnelling-summary">Tunnelling Summary</h2>
+<p>Before we get into the technical implementation of tunneling, let&rsquo;s take a look at the environment we&rsquo;ll be moving our packets through (docker-compose).</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>services:
+</span></span><span style="display:flex;"><span>  private-web:
+</span></span><span style="display:flex;"><span>    build: ./private-web/
+</span></span><span style="display:flex;"><span>    networks:
+</span></span><span style="display:flex;"><span>      private:
+</span></span><span style="display:flex;"><span>        ipv4_address: 172.21.0.3
+</span></span><span style="display:flex;"><span>    ports:
+</span></span><span style="display:flex;"><span>      - <span style="color:#e6db74">&#34;80&#34;</span>
+</span></span><span style="display:flex;"><span>    command: python -m http.server <span style="color:#ae81ff">80</span>
+</span></span><span style="display:flex;"><span>    volumes:
+</span></span><span style="display:flex;"><span>      - ./private-web/contents/:/var/www/html/
+</span></span><span style="display:flex;"><span>  private-host:
+</span></span><span style="display:flex;"><span>    build: ./private-host/
+</span></span><span style="display:flex;"><span>    networks:
+</span></span><span style="display:flex;"><span>      private:
+</span></span><span style="display:flex;"><span>        ipv4_address: 172.21.0.2
+</span></span><span style="display:flex;"><span>      public:
+</span></span><span style="display:flex;"><span>        ipv4_address: 172.21.1.2
+</span></span><span style="display:flex;"><span>    command: nc -lp <span style="color:#ae81ff">31337</span>
+</span></span><span style="display:flex;"><span>    volumes:
+</span></span><span style="display:flex;"><span>      - ./private-host/contents/:/home/user/
+</span></span><span style="display:flex;"><span>  public-host:
+</span></span><span style="display:flex;"><span>    build: ./public-host/
+</span></span><span style="display:flex;"><span>    networks:
+</span></span><span style="display:flex;"><span>      public:
+</span></span><span style="display:flex;"><span>        ipv4_address: 172.21.1.3
+</span></span><span style="display:flex;"><span>    ports:
+</span></span><span style="display:flex;"><span>      - <span style="color:#e6db74">&#34;1336&#34;</span>
+</span></span><span style="display:flex;"><span>      - <span style="color:#e6db74">&#34;1337&#34;</span>
+</span></span><span style="display:flex;"><span>    command: nc -lp <span style="color:#ae81ff">31337</span>
+</span></span><span style="display:flex;"><span>    volumes:
+</span></span><span style="display:flex;"><span>      - ./public-host/contents/:/home/user/
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>networks:
+</span></span><span style="display:flex;"><span>  private:
+</span></span><span style="display:flex;"><span>    ipam:
+</span></span><span style="display:flex;"><span>      config:
+</span></span><span style="display:flex;"><span>        - subnet: 172.21.0.0/24
+</span></span><span style="display:flex;"><span>          gateway: 172.21.0.1
+</span></span><span style="display:flex;"><span>  public:
+</span></span><span style="display:flex;"><span>    ipam:
+</span></span><span style="display:flex;"><span>      config:
+</span></span><span style="display:flex;"><span>        - subnet: 172.21.1.0/24
+</span></span><span style="display:flex;"><span>          gateway: 172.21.1.1
+</span></span></code></pre></div><p>In this environment we have 3 hosts. One hosting a private website (private-web), a basic host that&rsquo;s on the same network as the private website (private-host), and another basic host that is on a network we&rsquo;ve labeled &ldquo;public&rdquo; (public-host). If you take a closer look at the &ldquo;private-host&rdquo;, you&rsquo;ll see it is on both the private and public network. This will be our bridge. Ignore the <strong>nc -lp 31337</strong> command, i&rsquo;m just using this to make sure the containers don&rsquo;t shut down prematurely. We won&rsquo;t actually be using netcat for anything in this example.</p>
+<p>What we&rsquo;ll be looking to accomplish in this example is to make a tool that will run on the private host. We&rsquo;ll also be making a quick python script to act as a client, and run on the public host. The service running on the private host will establish connections to both the public host and the private web server. It will then allow traffic to pass through it between the public host and the private web server, allowing the public host to access a service it normally would not be able to reach.</p>
+<p>Once the connections are established, the python script will listen for new connections, and forward them through the existing tunnel that it has created with the remote service on the private host.</p>
+<p><img src="/images/tunnel-to-priv-web.gif" alt="Tunnel to Private Web"></p>
+<p>It&rsquo;s important that we&rsquo;re having the private host connect back to the public host. We&rsquo;ve configured the private host so that it won&rsquo;t allow listening on any ports, to simulate a strict network. However, the private host is still allowed to make outbound connections. Because of this we can still establish a connection between the public and private host, and leverage that to tunnel deeper into the network of ineterest. If you&rsquo;re familiar with ssh, this would be like using the <strong>-R</strong> flag.</p>
+<p>The containers we&rsquo;re using for these examples are pretty barebones <a href="https://www.alpinelinux.org/">alpine</a> images.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-dockerfile" data-lang="dockerfile"><span style="display:flex;"><span><span style="color:#66d9ef">FROM</span><span style="color:#e6db74"> python:3.10.4-alpine3.14</span><span style="color:#960050;background-color:#1e0010">
+</span></span></span><span style="display:flex;"><span><span style="color:#960050;background-color:#1e0010">
+</span></span></span><span style="display:flex;"><span><span style="color:#960050;background-color:#1e0010"></span><span style="color:#66d9ef">WORKDIR</span><span style="color:#e6db74"> /var/www/html</span><span style="color:#960050;background-color:#1e0010">
+</span></span></span><span style="display:flex;"><span><span style="color:#960050;background-color:#1e0010">
+</span></span></span><span style="display:flex;"><span><span style="color:#960050;background-color:#1e0010"></span><span style="color:#66d9ef">RUN</span> pip install simple_http_server<span style="color:#960050;background-color:#1e0010">
+</span></span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-dockerfile" data-lang="dockerfile"><span style="display:flex;"><span><span style="color:#66d9ef">FROM</span><span style="color:#e6db74"> alpine:latest</span><span style="color:#960050;background-color:#1e0010">
+</span></span></span><span style="display:flex;"><span><span style="color:#960050;background-color:#1e0010">
+</span></span></span><span style="display:flex;"><span><span style="color:#960050;background-color:#1e0010"></span><span style="color:#66d9ef">WORKDIR</span><span style="color:#e6db74"> /home/user</span><span style="color:#960050;background-color:#1e0010">
+</span></span></span></code></pre></div><h2 id="remote-service">Remote Service</h2>
+<p>The code for the service running on the private host is very similar to our proxy code. The only real difference is that it&rsquo;s going to be connecting to both servers of interest instead of doing any listening.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>(<span style="color:#66d9ef">int</span> argc, <span style="color:#66d9ef">char</span> <span style="color:#f92672">**</span>argv)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> status <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> client_sock <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;  <span style="color:#75715e">// Receives proxy requests
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">int</span> remote_sock <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;  <span style="color:#75715e">// Proxy target
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">struct</span> sockaddr_in conn_addr <span style="color:#f92672">=</span> {<span style="color:#ae81ff">0</span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    status <span style="color:#f92672">=</span> setup_client_conn(<span style="color:#f92672">&amp;</span>client_sock);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        puts(<span style="color:#e6db74">&#34;main: Failed to setup local listener.&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    status <span style="color:#f92672">=</span> setup_remote_sock(<span style="color:#f92672">&amp;</span>remote_sock);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        puts(<span style="color:#e6db74">&#34;main: Failed to setup remote socket.&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span>(<span style="color:#ae81ff">1</span>){ 
+</span></span><span style="display:flex;"><span>            status <span style="color:#f92672">=</span> data_checks(client_sock, remote_sock);
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&amp;&amp;</span> errno <span style="color:#f92672">!=</span> EAGAIN)
+</span></span><span style="display:flex;"><span>            {
+</span></span><span style="display:flex;"><span>                puts(<span style="color:#e6db74">&#34;main: Failed data checks.&#34;</span>);
+</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>            }<span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>){
+</span></span><span style="display:flex;"><span>                puts(<span style="color:#e6db74">&#34;connection closed&#34;</span>);
+</span></span><span style="display:flex;"><span>                close(client_sock);
+</span></span><span style="display:flex;"><span>                close(remote_sock);
+</span></span><span style="display:flex;"><span>                client_sock <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>                remote_sock <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>            }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Both the setup_client_conn and the setup_remote_sock functions connect out to their respective services. I probably should have consolidated them into one function but I&rsquo;m lazy so I didn&rsquo;t follow <a href="https://en.wikipedia.org/wiki/Don%27t_repeat_yourself">DRY</a> this time. Not production code right?</p>
+<div style="text-align:center;">
+    <img alt="Roll Your Own" src="/images/DRY.PNG" height=300 />
+</div>
+<p>Anyway, on to the code&hellip;</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#75715e">/**
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @brief Sets up the client socket
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @param client_sock pointer to socket fd to setup
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @return int error code
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> */</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">setup_client_conn</span>(<span style="color:#66d9ef">int</span> <span style="color:#f92672">*</span>client_sock)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> status <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">struct</span> sockaddr_in client_addr;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">*</span>client_sock <span style="color:#f92672">=</span> socket(AF_INET, SOCK_STREAM, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (<span style="color:#f92672">*</span>client_sock <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;setup_client_sock: socket&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    client_addr.sin_family <span style="color:#f92672">=</span> AF_INET;
+</span></span><span style="display:flex;"><span>    status <span style="color:#f92672">=</span> inet_pton(AF_INET, CLIENT_ADDR, <span style="color:#f92672">&amp;</span>(client_addr.sin_addr));
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">!=</span> <span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;setup_client_sock: inet_pton&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    client_addr.sin_port <span style="color:#f92672">=</span> htons(CLIENT_PORT);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    status <span style="color:#f92672">=</span> connect(<span style="color:#f92672">*</span>client_sock, (<span style="color:#66d9ef">struct</span> sockaddr <span style="color:#f92672">*</span>)<span style="color:#f92672">&amp;</span>client_addr, <span style="color:#66d9ef">sizeof</span>(client_addr));
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;setup_client_sock: connect&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> status;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    status <span style="color:#f92672">=</span> fcntl(<span style="color:#f92672">*</span>client_sock, F_SETFL, fcntl(<span style="color:#f92672">*</span>client_sock, F_GETFL, <span style="color:#ae81ff">0</span>) <span style="color:#f92672">|</span> O_NONBLOCK);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        perror(<span style="color:#e6db74">&#34;setup_client_sock fnctl&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> status;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> status;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>We&rsquo;re once again connecting to a remote server and making our socket non-blocking. And yeah setup_remote_sock is literally the same thing.</p>
+<h2 id="local-listener">Local Listener</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">import</span> socket
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>LOCAL_ADDR <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;127.0.0.1&#39;</span>
+</span></span><span style="display:flex;"><span>LOCAL_PORT <span style="color:#f92672">=</span> <span style="color:#ae81ff">1336</span>
+</span></span><span style="display:flex;"><span>REMOTE_ADDR <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;172.21.1.2&#39;</span>
+</span></span><span style="display:flex;"><span>REMOTE_PORT <span style="color:#f92672">=</span> <span style="color:#ae81ff">1337</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>KB <span style="color:#f92672">=</span> <span style="color:#ae81ff">1024</span>
+</span></span><span style="display:flex;"><span>DATA_SIZE <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span> <span style="color:#f92672">*</span> KB
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">listen_for_server</span>() <span style="color:#f92672">-&gt;</span> socket<span style="color:#f92672">.</span>socket:
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;&#34;&#34;Listen for remote server connection.&#34;&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>    remote_listener <span style="color:#f92672">=</span> socket<span style="color:#f92672">.</span>socket(socket<span style="color:#f92672">.</span>AF_INET, socket<span style="color:#f92672">.</span>SOCK_STREAM)
+</span></span><span style="display:flex;"><span>    remote_listener<span style="color:#f92672">.</span>setsockopt(socket<span style="color:#f92672">.</span>SOL_SOCKET, socket<span style="color:#f92672">.</span>SO_REUSEADDR, <span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">try</span>:
+</span></span><span style="display:flex;"><span>        remote_listener<span style="color:#f92672">.</span>bind((REMOTE_ADDR, REMOTE_PORT))
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">except</span>:
+</span></span><span style="display:flex;"><span>        print(<span style="color:#e6db74">&#39;Unable to bind listener&#39;</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">None</span>
+</span></span><span style="display:flex;"><span>    remote_listener<span style="color:#f92672">.</span>listen(<span style="color:#ae81ff">5</span>)
+</span></span><span style="display:flex;"><span>    local_conn, _ <span style="color:#f92672">=</span> remote_listener<span style="color:#f92672">.</span>accept()
+</span></span><span style="display:flex;"><span>    print(<span style="color:#e6db74">&#39;Received remote connection&#39;</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> local_conn
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">listen_local</span>() <span style="color:#f92672">-&gt;</span> socket<span style="color:#f92672">.</span>socket:
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;&#34;&#34;Listen for local data to tunnel.&#34;&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>    local_listener <span style="color:#f92672">=</span> socket<span style="color:#f92672">.</span>socket(socket<span style="color:#f92672">.</span>AF_INET, socket<span style="color:#f92672">.</span>SOCK_STREAM)
+</span></span><span style="display:flex;"><span>    local_listener<span style="color:#f92672">.</span>setsockopt(socket<span style="color:#f92672">.</span>SOL_SOCKET, socket<span style="color:#f92672">.</span>SO_REUSEADDR, <span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">try</span>:
+</span></span><span style="display:flex;"><span>        local_listener<span style="color:#f92672">.</span>bind((LOCAL_ADDR, LOCAL_PORT))
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">except</span>:
+</span></span><span style="display:flex;"><span>        print(<span style="color:#e6db74">&#39;Unable to bind listener&#39;</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">None</span>
+</span></span><span style="display:flex;"><span>    local_listener<span style="color:#f92672">.</span>listen(<span style="color:#ae81ff">5</span>)
+</span></span><span style="display:flex;"><span>    local_conn, _ <span style="color:#f92672">=</span> local_listener<span style="color:#f92672">.</span>accept()
+</span></span><span style="display:flex;"><span>    print(<span style="color:#e6db74">&#39;Received local connection&#39;</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> local_conn
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">tunnel_loop</span>(local_conn: socket<span style="color:#f92672">.</span>socket, remote_conn: socket<span style="color:#f92672">.</span>socket) <span style="color:#f92672">-&gt;</span> <span style="color:#66d9ef">None</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;&#34;&#34;Main tunnel traffic exchange loop.&#34;&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>    data <span style="color:#f92672">=</span> <span style="color:#66d9ef">None</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> <span style="color:#66d9ef">True</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">try</span>:
+</span></span><span style="display:flex;"><span>            data <span style="color:#f92672">=</span> local_conn<span style="color:#f92672">.</span>recv(DATA_SIZE)
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">except</span> <span style="color:#a6e22e">BlockingIOError</span>:
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">pass</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> data:
+</span></span><span style="display:flex;"><span>            remote_conn<span style="color:#f92672">.</span>send(data)
+</span></span><span style="display:flex;"><span>        data <span style="color:#f92672">=</span> <span style="color:#66d9ef">None</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">try</span>:
+</span></span><span style="display:flex;"><span>            data <span style="color:#f92672">=</span> remote_conn<span style="color:#f92672">.</span>recv(DATA_SIZE)
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">except</span> <span style="color:#a6e22e">BlockingIOError</span>:
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">pass</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> data:
+</span></span><span style="display:flex;"><span>            local_conn<span style="color:#f92672">.</span>send(data)
+</span></span><span style="display:flex;"><span>        data <span style="color:#f92672">=</span> <span style="color:#66d9ef">None</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">init</span>():
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;&#34;&#34;Tunnel setup and initialization.&#34;&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>    remote_conn <span style="color:#f92672">=</span> listen_for_server()
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> remote_conn:
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span>
+</span></span><span style="display:flex;"><span>    remote_conn<span style="color:#f92672">.</span>setblocking(<span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    local_conn <span style="color:#f92672">=</span> listen_local()
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> local_conn:
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span>
+</span></span><span style="display:flex;"><span>    local_conn<span style="color:#f92672">.</span>setblocking(<span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    tunnel_loop(local_conn, remote_conn)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> __name__ <span style="color:#f92672">==</span> <span style="color:#e6db74">&#34;__main__&#34;</span>:
+</span></span><span style="display:flex;"><span>    init()
+</span></span></code></pre></div><p>Our python listener functions very similarly to the original proxy. The syntax is just a lot more readable. Some basic swaps that happen are that we use setsockopt instead of fcntl, and checking for the BlockingIOError exception instead of the EAGAIN error. Making the sockets non-blocking is as easy as calling setblocking(0).</p>
+<h2 id="tunnel-demonstration">Tunnel Demonstration</h2>
+<p>In this demonstration, both windows on the left hand side will be running within the &ldquo;public-host&rdquo; container. The top left will be the client (wget) and the bottom left will run the local forwarding service (python script). On the right hand side we will have the &ldquo;private-host&rdquo; container running the remote service that will be used to provide the bridge to the private web server &ldquo;private-web&rdquo;.</p>
+<p><img src="/images/Tunnel.gif" alt="Tunnel Demo"></p>
+<p>As we discussed, you will see the python client listener being launched on the bottom left (public-host), and then the remote service connects back to it from private-host. We are then able to run wget on the public-host, targetted at localhost port 1336. This request is routed through the local listening python service, to the remote service on private-host, and finally to the private web server that the private host is able to reach. The private web server can then send the requested page back through the tunnel.</p>
+<p>If you&rsquo;d like to recreate this demo, you can run docker-compose from the devops directory, and then exec into the containers as desired.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>docker-compose build
+</span></span><span style="display:flex;"><span>docker-compose up -d
+</span></span><span style="display:flex;"><span>docker ps  <span style="color:#75715e"># Look at container IDs</span>
+</span></span><span style="display:flex;"><span>docker exec -it <span style="color:#f92672">[</span>container ID<span style="color:#f92672">]</span> sh
+</span></span></code></pre></div><p>In it&rsquo;s current state, this tool set is a very simplified tunnel. To really be useful, we&rsquo;d want to wrap the traffic being passed through the tunnel in something like https. This would help us blend in with existing network traffic.</p>
+<p>Anyway, that&rsquo;s it for now! In future perhaps we&rsquo;ll discuss things like tunneling through other protocols, encrypting traff, handling multiple clients/destinations simultaneously, etc. Feel free to reach out with any feedback or questions. Thanks for making it to the end!</p>
+
+    </div>
+  </article>
+
+    </main>
+  </body>
+</html>
