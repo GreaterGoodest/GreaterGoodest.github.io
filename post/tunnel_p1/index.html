@@ -241,7 +241,9 @@ Don&rsquo;t you hate it when pesky firewall rules or network configurations prev
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span>bind(<span style="color:#f92672">*</span>listen_sock, (<span style="color:#66d9ef">struct</span> sockaddr <span style="color:#f92672">*</span>)<span style="color:#f92672">&amp;</span>listen_addr, <span style="color:#66d9ef">sizeof</span>(listen_addr));
 </span></span><span style="display:flex;"><span>listen(<span style="color:#f92672">*</span>listen_sock, SOMAXCONN);
 </span></span></code></pre></div><p>We&rsquo;re now ready to receive connections to proxy! Of course if we actually receive any connections at this point, we&rsquo;ll just end up dropping them.</p>
-<p><img src="/images/charlie-brown-fail.gif" alt="charlie fail"></p>
+<div style="text-align:center;">
+    <img alt="Roll Your Own" src="/images/charlie-brown-fail.gif" height=300 />
+</div>
 <p>In order to actually receive a new connection we&rsquo;ll need to accept it. We&rsquo;ll then have a new socket associated with that connection.</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span>client_sock <span style="color:#f92672">=</span> accept(listen_sock, (<span style="color:#66d9ef">struct</span> sockaddr <span style="color:#f92672">*</span>)<span style="color:#f92672">&amp;</span>client_addr, <span style="color:#f92672">&amp;</span>(<span style="color:#66d9ef">int</span>){<span style="color:#ae81ff">0</span>});
 </span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> (client_sock <span style="color:#f92672">==</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
