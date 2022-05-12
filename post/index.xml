@@ -2,27 +2,27 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Posts on Goodest Blog</title>
-    <link>https://GreaterGoodest.github.io/post/</link>
+    <link>https://ryanagood.com/post/</link>
     <description>Recent content in Posts on Goodest Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Tue, 10 May 2022 17:49:54 -0500</lastBuildDate><atom:link href="https://GreaterGoodest.github.io/post/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Tue, 10 May 2022 17:49:54 -0500</lastBuildDate><atom:link href="https://ryanagood.com/post/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Sneaky Packets Part 1 - Basic Proxy/Tunnel</title>
-      <link>https://GreaterGoodest.github.io/post/tunnel_p1/</link>
+      <link>https://ryanagood.com/post/tunnel_p1/</link>
       <pubDate>Tue, 10 May 2022 17:49:54 -0500</pubDate>
       
-      <guid>https://GreaterGoodest.github.io/post/tunnel_p1/</guid>
+      <guid>https://ryanagood.com/post/tunnel_p1/</guid>
       <description>Introduction The repo associated with this project can be found here.
 Don&amp;rsquo;t you hate it when pesky firewall rules or network configurations prevent you from reaching your favorite, definitely non-malicious, domains? Someone recently told me that their workplace even blocks connections on port 1337! We can&amp;rsquo;t have that. Let&amp;rsquo;s dive into some things we can do to alleviate common networking challenges faced by red teams, as well as inform blue teamers of typical shenanigans used to circumvent various network protections.</description>
     </item>
     
     <item>
       <title>ELF Science Part 3</title>
-      <link>https://GreaterGoodest.github.io/post/elf_science_p3/</link>
+      <link>https://ryanagood.com/post/elf_science_p3/</link>
       <pubDate>Fri, 07 Jan 2022 20:57:52 -0600</pubDate>
       
-      <guid>https://GreaterGoodest.github.io/post/elf_science_p3/</guid>
+      <guid>https://ryanagood.com/post/elf_science_p3/</guid>
       <description>Introduction This post is part of a three part series (so far)
  Part 1 Part 2  As usual, a regularly updated version of the code base associated with this series can be found on my github.
 In the last ELF Science post, we defeated our encryption methodology by running the binary in a debugger, setting a breakpoint after self-decryption is complete, and dumping the decrypted memory. We then re-wrote the binary using these decrypted instructions, and NOP&amp;rsquo;d out the xor encryption method.</description>
@@ -30,10 +30,10 @@ In the last ELF Science post, we defeated our encryption methodology by running 
     
     <item>
       <title>ELF Science Part 2</title>
-      <link>https://GreaterGoodest.github.io/post/elf_science_p2/</link>
+      <link>https://ryanagood.com/post/elf_science_p2/</link>
       <pubDate>Thu, 02 Dec 2021 19:30:17 -0600</pubDate>
       
-      <guid>https://GreaterGoodest.github.io/post/elf_science_p2/</guid>
+      <guid>https://ryanagood.com/post/elf_science_p2/</guid>
       <description>Introduction This post is part of a three part series (so far)
  Part 1 Part 3  In the last post, we demonstrated a basic method for creating a self-decrypting binary. This is a common technique in many malware variants to add difficulty to the reverse engineering process.
 Inspired by some feedback from @marisa_hacks, this post will focus on dismantling our previous efforts.
@@ -42,10 +42,10 @@ We&amp;rsquo;ll perform dynamic analysis on the binary in order to step through 
     
     <item>
       <title>ELF Science Part 1</title>
-      <link>https://GreaterGoodest.github.io/post/elf_science_p1/</link>
+      <link>https://ryanagood.com/post/elf_science_p1/</link>
       <pubDate>Mon, 15 Nov 2021 16:00:44 -0600</pubDate>
       
-      <guid>https://GreaterGoodest.github.io/post/elf_science_p1/</guid>
+      <guid>https://ryanagood.com/post/elf_science_p1/</guid>
       <description>Introduction This post is part of a three part series (so far)
  Part 2 Part 3  Prereqs:
  C Python Mimimal x86 Some flavor of 64 bit linux (I&amp;rsquo;ll be using Debian)  All code described can be found here
